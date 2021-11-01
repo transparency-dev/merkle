@@ -28,8 +28,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"team.git.corp.google.com/security-transparency-team/merkle.git/rfc6962"
 	"team.git.corp.google.com/security-transparency-team/merkle.git/testonly"
-
-	_ "github.com/golang/glog" // Required for flag handling
 )
 
 var (

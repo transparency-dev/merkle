@@ -18,8 +18,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"testing"
-
-	_ "github.com/golang/glog"
 )
 
 func TestRFC6962Hasher(t *testing.T) {
