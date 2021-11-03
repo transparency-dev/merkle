@@ -46,8 +46,8 @@ type LogVerifier struct {
 	hasher LogHasher
 }
 
-// New returns a new LogVerifier for a tree.
-func New(hasher LogHasher) LogVerifier {
+// NewLogVerifier returns a new LogVerifier for a tree.
+func NewLogVerifier(hasher LogHasher) LogVerifier {
 	return LogVerifier{hasher}
 }
 
