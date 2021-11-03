@@ -39,6 +39,8 @@ type LogHasher interface {
 	HashLeaf(leaf []byte) []byte
 	// HashChildren computes interior nodes.
 	HashChildren(l, r []byte) []byte
+	// Size returns the number of bytes the Hash* functions will return.
+	Size() int
 }
 
 // LogVerifier verifies inclusion and consistency proofs for append only logs.
@@ -78,6 +80,9 @@ func (v LogVerifier) RootFromInclusionProof(leafIndex, treeSize int64, proof [][
 		return nil, fmt.Errorf("treeSize %d < 0", treeSize)
 	case leafIndex >= treeSize:
 		return nil, fmt.Errorf("leafIndex is beyond treeSize: %d >= %d", leafIndex, treeSize)
+	}
+	if got, want := len(leafHash), v.hasher.Size(); got != want {
+		return nil, fmt.Errorf("leafHash has unexpected size %d, want %d", got, want)
 	}
 
 	inner, border := decompInclProof(leafIndex, treeSize)
