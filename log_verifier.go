@@ -12,15 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package logverifier
+package merkle
 
 import (
 	"bytes"
 	"errors"
 	"fmt"
 	"math/bits"
-
-	"team.git.corp.google.com/security-transparency-team/merkle.git/hashers"
 )
 
 // RootMismatchError occurs when an inclusion proof fails.
@@ -33,13 +31,23 @@ func (e RootMismatchError) Error() string {
 	return fmt.Sprintf("calculated root:\n%v\n does not match expected root:\n%v", e.CalculatedRoot, e.ExpectedRoot)
 }
 
+// LogHasher provides the hash functions needed to compute dense merkle trees.
+type LogHasher interface {
+	// EmptyRoot supports returning a special case for the root of an empty tree.
+	EmptyRoot() []byte
+	// HashLeaf computes the hash of a leaf that exists.
+	HashLeaf(leaf []byte) []byte
+	// HashChildren computes interior nodes.
+	HashChildren(l, r []byte) []byte
+}
+
 // LogVerifier verifies inclusion and consistency proofs for append only logs.
 type LogVerifier struct {
-	hasher hashers.LogHasher
+	hasher LogHasher
 }
 
 // New returns a new LogVerifier for a tree.
-func New(hasher hashers.LogHasher) LogVerifier {
+func New(hasher LogHasher) LogVerifier {
 	return LogVerifier{hasher}
 }
 
@@ -70,9 +78,6 @@ func (v LogVerifier) RootFromInclusionProof(leafIndex, treeSize int64, proof [][
 		return nil, fmt.Errorf("treeSize %d < 0", treeSize)
 	case leafIndex >= treeSize:
 		return nil, fmt.Errorf("leafIndex is beyond treeSize: %d >= %d", leafIndex, treeSize)
-	}
-	if got, want := len(leafHash), v.hasher.Size(); got != want {
-		return nil, fmt.Errorf("leafHash has unexpected size %d, want %d", got, want)
 	}
 
 	inner, border := decompInclProof(leafIndex, treeSize)

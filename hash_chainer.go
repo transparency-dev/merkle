@@ -12,9 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package logverifier
-
-import "team.git.corp.google.com/security-transparency-team/merkle.git/hashers"
+package merkle
 
 // hashChainer provides convenience methods for hashing subranges of Merkle
 // Tree proofs to obtain (sub-)tree hashes. Depending on how the path to a tree
@@ -22,7 +20,7 @@ import "team.git.corp.google.com/security-transparency-team/merkle.git/hashers"
 //
 // TODO(pavelkalinnikov): Add a Merkle Trees doc with visual explanations.
 type hashChainer struct {
-	hasher hashers.LogHasher
+	hasher LogHasher
 }
 
 // chainInner computes a subtree hash for a node on or below the tree's right
