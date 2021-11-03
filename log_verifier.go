@@ -166,31 +166,6 @@ func (v LogVerifier) VerifyConsistencyProof(snapshot1, snapshot2 int64, root1, r
 	return nil // Proof OK.
 }
 
-// VerifiedPrefixHashFromInclusionProof calculates a root hash over leaves
-// [0..subSize), based on the inclusion |proof| and |leafHash| for a leaf at
-// index |subSize-1| in a tree of the specified |size| with the passed in
-// |root| hash.
-// Returns an error if the |proof| verification fails. The resulting smaller
-// tree's root hash is trusted iff the bigger tree's |root| hash is trusted.
-func (v LogVerifier) VerifiedPrefixHashFromInclusionProof(
-	subSize, size int64,
-	proof [][]byte, root []byte, leafHash []byte,
-) ([]byte, error) {
-	if subSize <= 0 {
-		return nil, fmt.Errorf("subtree size is %d, want > 0", subSize)
-	}
-	leaf := subSize - 1
-	if err := v.VerifyInclusionProof(leaf, size, proof, root, leafHash); err != nil {
-		return nil, err
-	}
-
-	inner := innerProofSize(leaf, size)
-	ch := hashChainer(v)
-	res := ch.chainInnerRight(leafHash, proof[:inner], leaf)
-	res = ch.chainBorderRight(res, proof[inner:])
-	return res, nil
-}
-
 // decompInclProof breaks down inclusion proof for a leaf at the specified
 // |index| in a tree of the specified |size| into 2 components. The splitting
 // point between them is where paths to leaves |index| and |size-1| diverge.
