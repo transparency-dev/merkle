@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"math/bits"
 
-	"team.git.corp.google.com/security-transparency-team/merkle.git/compact"
+	"github.com/transparency-dev/merkle/compact"
 )
 
 // NodeFetch bundles a node ID with additional information on how to use the

@@ -19,8 +19,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"team.git.corp.google.com/security-transparency-team/merkle.git/compact"
-	"team.git.corp.google.com/security-transparency-team/merkle.git/rfc6962"
+	"github.com/transparency-dev/merkle/compact"
+	"github.com/transparency-dev/merkle/rfc6962"
 )
 
 // TestCalcInclusionProofNodeAddresses contains inclusion proof tests. For

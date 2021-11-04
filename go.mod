@@ -1,4 +1,4 @@
-module team.git.corp.google.com/security-transparency-team/merkle.git
+module github.com/transparency-dev/merkle
 
 go 1.16
 

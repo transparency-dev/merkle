@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	"team.git.corp.google.com/security-transparency-team/merkle.git/rfc6962"
+	"github.com/transparency-dev/merkle/rfc6962"
 )
 
 type inclusionProofTestVector struct {

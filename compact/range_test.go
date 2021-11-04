@@ -26,8 +26,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"team.git.corp.google.com/security-transparency-team/merkle.git/rfc6962"
-	"team.git.corp.google.com/security-transparency-team/merkle.git/testonly"
+	"github.com/transparency-dev/merkle/rfc6962"
+	"github.com/transparency-dev/merkle/testonly"
 )
 
 var (
