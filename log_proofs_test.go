@@ -52,8 +52,8 @@ func TestCalcInclusionProofNodeAddresses(t *testing.T) {
 		return newNodeFetch(level, index, true)
 	}
 	for _, tc := range []struct {
-		size    int64 // The requested past tree size.
-		index   int64 // Leaf index in the requested tree.
+		size    uint64 // The requested past tree size.
+		index   uint64 // Leaf index in the requested tree.
 		want    []NodeFetch
 		wantErr bool
 	}{
@@ -62,8 +62,6 @@ func TestCalcInclusionProofNodeAddresses(t *testing.T) {
 		{size: 0, index: 1, wantErr: true},
 		{size: 1, index: 2, wantErr: true},
 		{size: 0, index: 3, wantErr: true},
-		{size: -1, index: 3, wantErr: true},
-		{size: 7, index: -1, wantErr: true},
 		{size: 7, index: 8, wantErr: true},
 
 		// Small trees.
@@ -176,15 +174,12 @@ func TestCalcConsistencyProofNodeAddresses(t *testing.T) {
 		return newNodeFetch(level, index, true)
 	}
 	for _, tc := range []struct {
-		size1   int64 // The smaller of the two tree sizes.
-		size2   int64 // The bigger of the two tree sizes.
+		size1   uint64 // The smaller of the two tree sizes.
+		size2   uint64 // The bigger of the two tree sizes.
 		want    []NodeFetch
 		wantErr bool
 	}{
 		// Errors.
-		{size1: 0, size2: -1, wantErr: true},
-		{size1: -10, size2: 0, wantErr: true},
-		{size1: -1, size2: -1, wantErr: true},
 		{size1: 0, size2: 0, wantErr: true},
 		{size1: 9, size2: 8, wantErr: true},
 
@@ -283,7 +278,7 @@ func TestInclusionSucceedsUpToTreeSize(t *testing.T) {
 	const maxSize = 555
 	for ts := 1; ts <= maxSize; ts++ {
 		for i := ts; i < ts; i++ {
-			if _, err := CalcInclusionProofNodeAddresses(int64(ts), int64(i)); err != nil {
+			if _, err := CalcInclusionProofNodeAddresses(uint64(ts), uint64(i)); err != nil {
 				t.Errorf("CalcInclusionProofNodeAddresses(ts:%d, i:%d) = %v", ts, i, err)
 			}
 		}
@@ -294,7 +289,7 @@ func TestConsistencySucceedsUpToTreeSize(t *testing.T) {
 	const maxSize = 100
 	for s1 := 1; s1 < maxSize; s1++ {
 		for s2 := s1 + 1; s2 <= maxSize; s2++ {
-			if _, err := CalcConsistencyProofNodeAddresses(int64(s1), int64(s2)); err != nil {
+			if _, err := CalcConsistencyProofNodeAddresses(uint64(s1), uint64(s2)); err != nil {
 				t.Errorf("CalcConsistencyProofNodeAddresses(%d, %d) = %v", s1, s2, err)
 			}
 		}

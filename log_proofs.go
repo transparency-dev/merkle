@@ -34,17 +34,14 @@ type NodeFetch struct {
 // nodes represent complete subtrees in the tree of this size or above.
 //
 // Use Rehash function to compose the proof after the node hashes are fetched.
-func CalcInclusionProofNodeAddresses(size, index int64) ([]NodeFetch, error) {
+func CalcInclusionProofNodeAddresses(size, index uint64) ([]NodeFetch, error) {
 	if size < 1 {
 		return nil, fmt.Errorf("invalid parameter for inclusion proof: size %d < 1", size)
 	}
 	if index >= size {
 		return nil, fmt.Errorf("invalid parameter for inclusion proof: index %d is >= size %d", index, size)
 	}
-	if index < 0 {
-		return nil, fmt.Errorf("invalid parameter for inclusion proof: index %d is < 0", index)
-	}
-	return proofNodes(uint64(index), 0, uint64(size), true), nil
+	return proofNodes(index, 0, size, true), nil
 }
 
 // CalcConsistencyProofNodeAddresses returns the tree node IDs needed to build
@@ -52,7 +49,7 @@ func CalcInclusionProofNodeAddresses(size, index int64) ([]NodeFetch, error) {
 // represent complete subtrees in the tree of size2 or above.
 //
 // Use Rehash function to compose the proof after the node hashes are fetched.
-func CalcConsistencyProofNodeAddresses(size1, size2 int64) ([]NodeFetch, error) {
+func CalcConsistencyProofNodeAddresses(size1, size2 uint64) ([]NodeFetch, error) {
 	if size1 < 1 {
 		return nil, fmt.Errorf("invalid parameter for consistency proof: size1 %d < 1", size1)
 	}
@@ -63,7 +60,7 @@ func CalcConsistencyProofNodeAddresses(size1, size2 int64) ([]NodeFetch, error) 
 		return nil, fmt.Errorf("invalid parameter for consistency proof: size1 %d > size2 %d", size1, size2)
 	}
 
-	return consistencyNodes(uint64(size1), uint64(size2)), nil
+	return consistencyNodes(size1, size2), nil
 }
 
 // consistencyNodes returns node addresses for the consistency proof between
