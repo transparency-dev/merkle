@@ -5,17 +5,17 @@ This document introduces **Compact Ranges**, an easy mental model and technique 
 
 ## Definition
 
-For a range `[L, R)` of leaves in a Merkle tree, a Compact Range is the minimal set of nodes that “cover” these leaves (and only). For example, in the picture below the range `[2, 9)` is covered by nodes `[1.1, 2.1, 8]`, and the range `[12, 16)` is covered by a single node `2.3`.
+For a range `[L, R)` of leaves in a Merkle tree, a Compact Range is the minimal set of nodes that “cover” these, and only these, leaves. For example, in the picture below, the range `[2, 9)` is covered by nodes `[1.1, 2.1, 8]`, and the range `[12, 16)` is covered by a single node `2.3`.
 
 ![compact_ranges](https://user-images.githubusercontent.com/3757441/148389766-9ab85a79-d40d-4f0c-a83f-d348de584e8d.png)
 
 A compact range always consists of nodes that are “final”, i.e. the hashes of these nodes never change as the tree grows. For example, range `[0, 21)` in the picture above is covered by nodes `[4.0, 2.4, 20]`, not just node `5.0`. Nodes `5.0` and `3.2` are “ephemeral” for the tree of this size, and will change when new leaves are appended to the tree until the tree size crosses their corresponding perfect subtree right borders. For simplicity, when we talk about compact ranges, we can assume that the “ephemeral” nodes don’t exist.
 
-Compact ranges have many useful properties some of which are elaborated in sections below. The basic property is that the number of nodes in a compact range `[L, R)` is `O(log(R-L))`, or `O(log N)` more generally. A compact range is always unique, and its shape is determined using a few bitwise operations on `L` and `R`.
+Compact ranges have many useful properties, some of which are elaborated in sections below. The basic property is that the number of nodes in a compact range `[L, R)` is `O(log(R-L))`, or `O(log N)` more generally. A compact range is always unique, and its shape is determined using a few bitwise operations on `L` and `R`.
 
 ## Merging Compact Ranges
 
-The core property that makes compact ranges widely usable is that they are “mergeable”. Two compact ranges, `[L, M)` and `[M, R)`, can be efficiently merged into an `[L, R)` range. Consider the picture below for an intuition on how it works.
+The core property that makes compact ranges widely usable is that they are “mergeable”. Two compact ranges, `[L, M)` and `[M, R)`, can be efficiently merged into an `[L, R)` range. Consider the picture below for an intuitive understanding of how it works.
 
 ![compact_ranges_merge](https://user-images.githubusercontent.com/3757441/148390790-d0fdd729-9846-4382-a681-8d0fe049a06b.png)
 
@@ -27,7 +27,7 @@ Merging two compact ranges can be implemented in `O(log(R-L))`, or more generall
 
 ## Merkle Tree Proofs
 
-A compact range `[L, R)`, if represented by the cryptographic hashes of the corresponding nodes, can be considered as a commitment to the containment of the range. The ability to merge compact ranges is effectively the ability to merge commitments.
+A compact range `[L, R)`, if represented by the cryptographic hashes of the corresponding nodes, can be considered a commitment to the contents of the leaves in this range. The ability to merge compact ranges is effectively the ability to merge commitments.
 
 ### Inclusion Proofs Revisited
 
