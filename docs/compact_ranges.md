@@ -7,7 +7,7 @@ This document introduces **Compact Ranges**, an easy mental model and technique 
 
 For a range `[L, R)` of leaves in a Merkle tree, a Compact Range is the minimal set of nodes that “cover” these, and only these, leaves. For example, in the picture below, the range `[2, 9)` is covered by nodes `[1.1, 2.1, 8]`, and the range `[12, 16)` is covered by a single node `2.3`.
 
-![compact_ranges](https://user-images.githubusercontent.com/3757441/148389766-9ab85a79-d40d-4f0c-a83f-d348de584e8d.png)
+![compact_ranges](images/compact_ranges.png)
 
 A compact range always consists of nodes that are “final”, i.e. the hashes of these nodes never change as the tree grows. For example, range `[0, 21)` in the picture above is covered by nodes `[4.0, 2.4, 20]`, not just node `5.0`. Nodes `5.0` and `3.2` are “ephemeral” for the tree of this size, and will change when new leaves are appended to the tree until the tree size crosses their corresponding perfect subtree right borders. For simplicity, when we talk about compact ranges, we can assume that the “ephemeral” nodes don’t exist.
 
@@ -17,7 +17,7 @@ Compact ranges have many useful properties, some of which are elaborated in sect
 
 The core property that makes compact ranges widely usable is that they are “mergeable”. Two compact ranges, `[L, M)` and `[M, R)`, can be efficiently merged into an `[L, R)` range. Consider the picture below for an intuitive understanding of how it works.
 
-![compact_ranges_merge](https://user-images.githubusercontent.com/3757441/148390790-d0fdd729-9846-4382-a681-8d0fe049a06b.png)
+![compact_ranges_merge](images/compact_ranges_merge.png)
 
 Given 2 compact ranges, `[2, 9)` and `[9, 16)`, each represented by a set of node hashes (3 green and 3 cyan nodes correspondingly), we “merge” 2 sibling nodes by computing their parent’s hash any time they are both present in the set of nodes. This process repeats until there are no siblings in the set. As a result, we get hashes of nodes `[1.1, 2.1, 3.1]` which, as it turns out, represent a compact range of `[2, 16)`.
 
@@ -35,7 +35,7 @@ A classic way of thinking about Merkle tree proofs is “vertical”, or recursi
 
 Consider an inclusion proof for leaf `6` in the example tree below. Nodes `[3.1, 2.0, 1.2, 7]` represent a classic CT-style vertical inclusion proof.
 
-![inclusion_proof](https://user-images.githubusercontent.com/3757441/148392091-d3912d67-14c8-4813-b6d6-bd350211602f.png)
+![inclusion_proof](images/inclusion_proof.png)
 
 Mind the coloring though. Nodes `[2.0, 1.2]` to the left of the path to leaf `6` are simply the compact range of `[0, 6)`. Similarly, nodes `[7, 3.1]` to the right are the compact range of `[7, 16)`.
 
@@ -47,7 +47,7 @@ In the previous section we established that an inclusion proof can be decomposed
 
 For example, consider the case when we want to prove the authenticity of values within the range `[6, 13)`, as shown in the picture below.
 
-![inclusion_proof_range](https://user-images.githubusercontent.com/3757441/148393280-2fb6e3fc-4c09-41eb-8cc2-c6e4183e57d2.png)
+![inclusion_proof_range](images/inclusion_proof_range.png)
 
 To do so, the server can provide 2 compact ranges: `[0, 6)` and `[13, 16)`. The client will then construct the middle compact range locally (based on the leaf hashes of values between `6` and `12` that they know), and merge it with the two boundary compact ranges. Then they compute the root hash from the resulting compact range, and compare it against the trusted root hash.
 
@@ -61,7 +61,7 @@ It is easy to see that a range inclusion proof takes `O(log N)` hashes of space.
 
 A consistency proof (or proof of the append-only property) proves to a client who trusts one root hash commitment that another root hash commitment commits to the same entries, plus some new ones appended to the tree from the right.
 
-![consistency_proof](https://user-images.githubusercontent.com/3757441/148394198-837d7532-5b6a-49b9-860e-2a98970984f2.png)
+![consistency_proof](images/consistency_proof.png)
 
 The definition of the consistency proof already contains a hint on how to model it with compact ranges. Suppose a client knows a compact range of the old tree, like `[0, 6)` in the picture above. The server provides compact range of all the appended entries, e.g. `[6, 16)`. The client can then merge `[0, 6)` with `[6, 16)`, and compare the resulting root hash with the advertised one.
 
