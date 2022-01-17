@@ -27,12 +27,12 @@ import (
 type Nodes struct {
 	// IDs contains the IDs of non-ephemeral nodes sufficient to build the proof.
 	IDs []compact.NodeID
-	// Begin is the beginning index (inclusive) into the IDs[Begin:End] subslice
+	// begin is the beginning index (inclusive) into the IDs[begin:end] subslice
 	// of the nodes comprising the ephemeral node.
-	Begin int
-	// End is the ending (exclusive) index into the IDs[Begin:End] subslice of
+	begin int
+	// end is the ending (exclusive) index into the IDs[begin:end] subslice of
 	// the nodes comprising the ephemeral node.
-	End int
+	end int
 }
 
 // Inclusion returns the information on how to fetch and construct an inclusion
@@ -68,9 +68,9 @@ func Consistency(size1, size2 uint64) (Nodes, error) {
 	// Now append the path from this node to the root of size2.
 	p := nodes(index, level, size2)
 	p.IDs = append(proof, p.IDs...)
-	if len(proof) == 1 && p.Begin < p.End {
-		p.Begin++
-		p.End++
+	if len(proof) == 1 && p.begin < p.end {
+		p.begin++
+		p.end++
 	}
 	return p, nil
 }
@@ -122,7 +122,7 @@ func nodes(index uint64, level uint, size uint64) Nodes {
 		}
 	}
 
-	return Nodes{IDs: proof, Begin: rehashBegin, End: rehashEnd}
+	return Nodes{IDs: proof, begin: rehashBegin, end: rehashEnd}
 }
 
 // Rehash computes the proof based on the slice of node hashes corresponding to
@@ -140,9 +140,9 @@ func (n Nodes) Rehash(h [][]byte, hc func(left, right []byte) []byte) ([][]byte,
 	// rehashed list after scanning h up to index i-1.
 	for i, ln := 0, len(h); i < ln; i, cursor = i+1, cursor+1 {
 		hash := h[i]
-		if i >= n.Begin && i < n.End {
+		if i >= n.begin && i < n.end {
 			// Scan the block of node hashes that need rehashing.
-			for i++; i < n.End; i++ {
+			for i++; i < n.end; i++ {
 				hash = hc(h[i], hash)
 			}
 			i--
