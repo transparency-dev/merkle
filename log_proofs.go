@@ -18,30 +18,22 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/transparency-dev/merkle/compact"
 	"github.com/transparency-dev/merkle/proof"
 )
-
-// NodeFetch bundles a node ID with additional information on how to use the
-// node to construct a proof.
-type NodeFetch struct {
-	ID     compact.NodeID
-	Rehash bool
-}
 
 // CalcInclusionProofNodeAddresses returns the tree node IDs needed to build an
 // inclusion proof for a specified tree size and leaf index. All the returned
 // nodes represent complete subtrees in the tree of this size or above.
 //
 // Use Rehash function to compose the proof after the node hashes are fetched.
-func CalcInclusionProofNodeAddresses(size, index uint64) ([]NodeFetch, error) {
+func CalcInclusionProofNodeAddresses(size, index uint64) (proof.Nodes, error) {
 	if size < 1 {
-		return nil, fmt.Errorf("invalid parameter for inclusion proof: size %d < 1", size)
+		return proof.Nodes{}, fmt.Errorf("invalid parameter for inclusion proof: size %d < 1", size)
 	}
 	if index >= size {
-		return nil, fmt.Errorf("invalid parameter for inclusion proof: index %d is >= size %d", index, size)
+		return proof.Nodes{}, fmt.Errorf("invalid parameter for inclusion proof: index %d is >= size %d", index, size)
 	}
-	return convert(proof.Inclusion(index, size)), nil
+	return proof.Inclusion(index, size), nil
 }
 
 // CalcConsistencyProofNodeAddresses returns the tree node IDs needed to build
@@ -49,27 +41,28 @@ func CalcInclusionProofNodeAddresses(size, index uint64) ([]NodeFetch, error) {
 // represent complete subtrees in the tree of size2 or above.
 //
 // Use Rehash function to compose the proof after the node hashes are fetched.
-func CalcConsistencyProofNodeAddresses(size1, size2 uint64) ([]NodeFetch, error) {
+func CalcConsistencyProofNodeAddresses(size1, size2 uint64) (proof.Nodes, error) {
 	if size1 < 1 {
-		return nil, fmt.Errorf("invalid parameter for consistency proof: size1 %d < 1", size1)
+		return proof.Nodes{}, fmt.Errorf("invalid parameter for consistency proof: size1 %d < 1", size1)
 	}
 	if size2 < 1 {
-		return nil, fmt.Errorf("invalid parameter for consistency proof: size2 %d < 1", size2)
+		return proof.Nodes{}, fmt.Errorf("invalid parameter for consistency proof: size2 %d < 1", size2)
 	}
 	if size1 > size2 {
-		return nil, fmt.Errorf("invalid parameter for consistency proof: size1 %d > size2 %d", size1, size2)
+		return proof.Nodes{}, fmt.Errorf("invalid parameter for consistency proof: size1 %d > size2 %d", size1, size2)
 	}
 
-	return convert(proof.Consistency(size1, size2)), nil
+	return proof.Consistency(size1, size2), nil
 }
 
-// Rehash computes the proof based on the slice of NodeFetch structs, and the
-// corresponding hashes of these nodes. The slices must be of the same length.
-// The hc parameter computes node's hash based on hashes of its children.
+// Rehash computes the proof based on the information in the Nodes type, and
+// the corresponding hashes of the nodes. The hashes slice must match the
+// expected size of the proof. The hc parameter computes node's hash based on
+// hashes of its children.
 //
 // Warning: The passed-in slice of hashes can be modified in-place.
-func Rehash(h [][]byte, nf []NodeFetch, hc func(left, right []byte) []byte) ([][]byte, error) {
-	if len(h) != len(nf) {
+func Rehash(h [][]byte, n proof.Nodes, hc func(left, right []byte) []byte) ([][]byte, error) {
+	if len(h) != len(n.IDs) {
 		return nil, errors.New("slice lengths mismatch")
 	}
 	cursor := 0
@@ -78,9 +71,9 @@ func Rehash(h [][]byte, nf []NodeFetch, hc func(left, right []byte) []byte) ([][
 	// rehashed list after scanning h up to index i-1.
 	for i, ln := 0, len(h); i < ln; i, cursor = i+1, cursor+1 {
 		hash := h[i]
-		if nf[i].Rehash {
+		if i >= n.Begin && i < n.End {
 			// Scan the block of node hashes that need rehashing.
-			for i++; i < len(nf) && nf[i].Rehash; i++ {
+			for i++; i < n.End; i++ {
 				hash = hc(h[i], hash)
 			}
 			i--
@@ -88,16 +81,4 @@ func Rehash(h [][]byte, nf []NodeFetch, hc func(left, right []byte) []byte) ([][
 		h[cursor] = hash
 	}
 	return h[:cursor], nil
-}
-
-// convert converts proof.Nodes into the legacy []NodeFetch format.
-//
-// TODO(pavelkalinnikov): Remove this function and NodeFetch. See next commit.
-func convert(pn proof.Nodes) []NodeFetch {
-	nodes := make([]NodeFetch, 0, len(pn.IDs))
-	for i, id := range pn.IDs {
-		rehash := i >= pn.Begin && i < pn.End && pn.End > pn.Begin + 1
-		nodes = append(nodes, NodeFetch{ID: id, Rehash: rehash})
-	}
-	return nodes
 }
