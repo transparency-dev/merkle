@@ -151,20 +151,21 @@ individual entry inclusion proofs which could cost `O(N log N)`.
 ### Consistency Proofs
 
 A consistency proof (or proof of the append-only property) proves to a client
-who trusts one root hash commitment that another root hash commitment commits
-to the same entries, plus some new ones appended to the tree from the right.
+that one tree state is the result of appending some entries to another state.
 
 ![consistency_proof](images/consistency_proof.png)
 
 The definition of the consistency proof already contains a hint on how to model
 it with compact ranges. Suppose a client knows a compact range of the old tree,
-like `[0, 6)` in the picture above. The server provides a compact range of all
-the appended entries, e.g. `[6, 16)`. The client can then merge `[0, 6)` with
-`[6, 16)`, and compare the resulting root hash with the advertised one.
+like `[0, 6)` in the picture above, and the server wants to prove that another
+state with 16 entries is an extension of the first 6 entries. The server
+provides a compact range of the appended entries `[6, 16)`. The client can then
+merge `[0, 6)` with `[6, 16)`, and compare the resulting compact range `[0,
+16)` with the advertised root hash.
 
 If the client does not have the compact range of the old tree, it can be
-provided by the server too. The classical CT consistency proof
-[algorithm](https://datatracker.ietf.org/doc/html/rfc6962#section-2.1.2)
-doesn’t assume that the client has a mergeable commitment. So, instead of just
-compact range `[6, 16)`, a CT-style proof roughly consists of both the old
-compact range and the one that commits to the appended entries.
+provided by the server too. The classic consistency proof
+[algorithm](https://datatracker.ietf.org/doc/html/rfc6962#section-2.1.2) in RFC
+6962 doesn’t assume that the client has a mergeable commitment. So, instead of
+just compact range `[6, 16)`, it roughly consists of both the old compact range
+and the one that covers the appended entries.
