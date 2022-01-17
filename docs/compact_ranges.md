@@ -74,6 +74,19 @@ corresponding nodes, can be considered a commitment to the contents of the
 leaves in this range. The ability to merge compact ranges is effectively the
 ability to merge commitments.
 
+### Root Hash
+
+For a Merkle tree with `N` leaves, the compact range `[0, N)` represents a
+succinct state of the entire tree.
+
+Often applications further reduce the size of this state down to a single hash.
+For example, in a tree with 21 leaves, as in the picutures above, this would be
+a hash of the ephemeral node `5.0`. We refer to this as the **root hash**.
+
+Merkle tree proofs verification uses the root hash (directly or indirectly) as
+the trust anchor. Usually the root hash is cryptographically signed and
+committed to by a server.
+
 ### Inclusion Proofs Revisited
 
 A classic way of thinking about Merkle tree proofs is “vertical”, or recursive.
