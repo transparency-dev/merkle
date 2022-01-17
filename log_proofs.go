@@ -15,7 +15,6 @@
 package merkle
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/transparency-dev/merkle/proof"
@@ -53,32 +52,4 @@ func CalcConsistencyProofNodeAddresses(size1, size2 uint64) (proof.Nodes, error)
 	}
 
 	return proof.Consistency(size1, size2), nil
-}
-
-// Rehash computes the proof based on the information in the Nodes type, and
-// the corresponding hashes of the nodes. The hashes slice must match the
-// expected size of the proof. The hc parameter computes node's hash based on
-// hashes of its children.
-//
-// Warning: The passed-in slice of hashes can be modified in-place.
-func Rehash(h [][]byte, n proof.Nodes, hc func(left, right []byte) []byte) ([][]byte, error) {
-	if len(h) != len(n.IDs) {
-		return nil, errors.New("slice lengths mismatch")
-	}
-	cursor := 0
-	// Scan the list of node hashes, and store the rehashed list in-place.
-	// Invariant: cursor <= i, and h[:cursor] contains all the hashes of the
-	// rehashed list after scanning h up to index i-1.
-	for i, ln := 0, len(h); i < ln; i, cursor = i+1, cursor+1 {
-		hash := h[i]
-		if i >= n.Begin && i < n.End {
-			// Scan the block of node hashes that need rehashing.
-			for i++; i < n.End; i++ {
-				hash = hc(h[i], hash)
-			}
-			i--
-		}
-		h[cursor] = hash
-	}
-	return h[:cursor], nil
 }
