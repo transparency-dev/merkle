@@ -89,27 +89,29 @@ committed to by a server.
 
 ### Inclusion Proofs Revisited
 
-A classic way of thinking about Merkle tree proofs is “vertical”, or recursive.
-For example, see how proofs are
-[defined](https://datatracker.ietf.org/doc/html/rfc6962#section-2.1) in RFC
-6962. In the context of this document we rather look at Merkle trees as
-horizontal structures (hence *ranges*).
+An **inclusion proof** helps a client to verify that, in a Merkle tree of the
+given state / root hash, a certain leaf position `i` matches the given value.
 
-Consider an inclusion proof for leaf `6` in the example tree below. Nodes
-`[3.1, 2.0, 1.2, 7]` represent a classic CT-style vertical inclusion proof.
+Intuitively, such a proof is the information that the client combines with the
+leaf hash in order to compute the root hash, which is then compared with the
+trusted one. The root hashes should match iff the leaf hash is correct (except
+a negligible probability of hash collisions).
+
+More specifically, for a leaf at index `i`, the server can give the compact
+ranges `[0, i)` and `[i+1, N)`, which the client can verify by merging with a
+middle range `[i, i+1)` formed simply as the hash of this leaf. The result
+will be a compact range `[0, N)`, which can be compared with the trusted root
+hash.
 
 ![inclusion_proof](images/inclusion_proof.png)
 
-Mind the coloring though. Nodes `[2.0, 1.2]` to the left of the path to leaf
-`6` are simply the compact range of `[0, 6)`. Similarly, nodes `[7, 3.1]` to
-the right are the compact range of `[7, 16)`.
+In the example above, an inclusion proof for leaf `6` consists of compact
+ranges `[0, 6)` and `[7, 16)`.
 
-One way to verify such a proof is to run a vertical CT-style loop combining
-hashes, and compare the result with the expected root hash. Another way to
-combine the hashes and get the same result is to merge three compact ranges:
-`[0, 6)`, `[6, 7)` and `[7, 16)`. The boundary compact ranges are provided by
-the server as a proof, and the (trivial) middle one is constructed by the
-client.
+Note that the same nodes `[3.1, 2.0, 1.2, 7]` can be viewed as the siblings of
+the path going from the root to the leaf. This is a classic "vertical" way of
+thinking about Merkle tree proofs. It is used, for example, in [RFC
+6962](https://datatracker.ietf.org/doc/html/rfc6962#section-2.1).
 
 ### Arbitrary Inclusion Proofs
 
