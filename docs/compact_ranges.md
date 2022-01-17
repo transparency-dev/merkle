@@ -167,5 +167,9 @@ If the client does not have the compact range of the old tree, it can be
 provided by the server too. The classic consistency proof
 [algorithm](https://datatracker.ietf.org/doc/html/rfc6962#section-2.1.2) in RFC
 6962 doesn’t assume that the client has a mergeable commitment. So, instead of
-just compact range `[6, 16)`, it roughly consists of both the old compact range
+just compact range `[6, 16)`, it roughly[^2] consists of both the old compact range
 and the one that covers the appended entries.
+
+[^2]: In RFC 6962 the proof size has fewer nodes in most cases, e.g. the
+perfect nodes on the right border of the tree are replaced by a single
+ephemeral node.
