@@ -18,12 +18,16 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/transparency-dev/merkle/compact"
 	"github.com/transparency-dev/merkle/proof"
 )
 
 // NodeFetch bundles a node ID with additional information on how to use the
 // node to construct a proof.
-type NodeFetch = proof.NodeFetch
+type NodeFetch struct {
+	ID     compact.NodeID
+	Rehash bool
+}
 
 // CalcInclusionProofNodeAddresses returns the tree node IDs needed to build an
 // inclusion proof for a specified tree size and leaf index. All the returned
@@ -37,7 +41,7 @@ func CalcInclusionProofNodeAddresses(size, index uint64) ([]NodeFetch, error) {
 	if index >= size {
 		return nil, fmt.Errorf("invalid parameter for inclusion proof: index %d is >= size %d", index, size)
 	}
-	return proof.Nodes(index, 0, size, true), nil
+	return convert(proof.Inclusion(index, size)), nil
 }
 
 // CalcConsistencyProofNodeAddresses returns the tree node IDs needed to build
@@ -56,7 +60,7 @@ func CalcConsistencyProofNodeAddresses(size1, size2 uint64) ([]NodeFetch, error)
 		return nil, fmt.Errorf("invalid parameter for consistency proof: size1 %d > size2 %d", size1, size2)
 	}
 
-	return proof.Consistency(size1, size2), nil
+	return convert(proof.Consistency(size1, size2)), nil
 }
 
 // Rehash computes the proof based on the slice of NodeFetch structs, and the
@@ -84,4 +88,16 @@ func Rehash(h [][]byte, nf []NodeFetch, hc func(left, right []byte) []byte) ([][
 		h[cursor] = hash
 	}
 	return h[:cursor], nil
+}
+
+// convert converts proof.Nodes into the legacy []NodeFetch format.
+//
+// TODO(pavelkalinnikov): Remove this function and NodeFetch. See next commit.
+func convert(pn proof.Nodes) []NodeFetch {
+	nodes := make([]NodeFetch, 0, len(pn.IDs))
+	for i, id := range pn.IDs {
+		rehash := i >= pn.Begin && i < pn.End && pn.End > pn.Begin + 1
+		nodes = append(nodes, NodeFetch{ID: id, Rehash: rehash})
+	}
+	return nodes
 }
