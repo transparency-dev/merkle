@@ -46,9 +46,12 @@ func Inclusion(index, size uint64) (Nodes, error) {
 
 // Consistency returns the information on how to fetch and construct a
 // consistency proof between the two given tree sizes of a log Merkle tree.
-func Consistency(size1, size2 uint64) Nodes {
-	if size1 == size2 {
-		return Nodes{IDs: []compact.NodeID{}}
+func Consistency(size1, size2 uint64) (Nodes, error) {
+	if size1 > size2 {
+		return Nodes{}, fmt.Errorf("tree size %d > %d", size1, size2)
+	}
+	if size1 == size2 || size1 == 0 {
+		return Nodes{IDs: []compact.NodeID{}}, nil
 	}
 
 	// TODO(pavelkalinnikov): Make the capacity estimate accurate.
@@ -69,7 +72,7 @@ func Consistency(size1, size2 uint64) Nodes {
 		p.Begin++
 		p.End++
 	}
-	return p
+	return p, nil
 }
 
 // nodes returns the node IDs necessary to prove that the (level, index) node
