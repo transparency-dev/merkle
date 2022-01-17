@@ -20,21 +20,6 @@ import (
 	"github.com/transparency-dev/merkle/proof"
 )
 
-// CalcInclusionProofNodeAddresses returns the tree node IDs needed to build an
-// inclusion proof for a specified tree size and leaf index. All the returned
-// nodes represent complete subtrees in the tree of this size or above.
-//
-// Use Rehash function to compose the proof after the node hashes are fetched.
-func CalcInclusionProofNodeAddresses(size, index uint64) (proof.Nodes, error) {
-	if size < 1 {
-		return proof.Nodes{}, fmt.Errorf("invalid parameter for inclusion proof: size %d < 1", size)
-	}
-	if index >= size {
-		return proof.Nodes{}, fmt.Errorf("invalid parameter for inclusion proof: index %d is >= size %d", index, size)
-	}
-	return proof.Inclusion(index, size), nil
-}
-
 // CalcConsistencyProofNodeAddresses returns the tree node IDs needed to build
 // a consistency proof between two specified tree sizes. All the returned nodes
 // represent complete subtrees in the tree of size2 or above.

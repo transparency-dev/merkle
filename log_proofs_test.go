@@ -23,8 +23,8 @@ import (
 	"github.com/transparency-dev/merkle/proof"
 )
 
-// TestCalcInclusionProofNodeAddresses contains inclusion proof tests. For
-// reference, consider the following example of a tree from RFC 6962:
+// TestInclusion contains inclusion proof tests. For reference, consider the
+// following example of a tree from RFC 6962:
 //
 //                hash              <== Level 3
 //               /    \
@@ -44,7 +44,7 @@ import (
 //
 // Our storage node layers are always populated from the bottom up, hence the
 // gap at level 1, index 3 in the above picture.
-func TestCalcInclusionProofNodeAddresses(t *testing.T) {
+func TestInclusion(t *testing.T) {
 	id := compact.NewNodeID
 	nodes := func(ids ...compact.NodeID) proof.Nodes {
 		return proof.Nodes{IDs: ids}
@@ -112,14 +112,14 @@ func TestCalcInclusionProofNodeAddresses(t *testing.T) {
 		)},
 	} {
 		t.Run(fmt.Sprintf("%d:%d", tc.size, tc.index), func(t *testing.T) {
-			proof, err := CalcInclusionProofNodeAddresses(tc.size, tc.index)
+			proof, err := proof.Inclusion(tc.index, tc.size)
 			if tc.wantErr {
 				if err == nil {
 					t.Fatal("accepted bad params")
 				}
 				return
 			} else if err != nil {
-				t.Fatalf("CalcInclusionProofNodeAddresses: %v", err)
+				t.Fatalf("proof.Inclusion: %v", err)
 			}
 			if diff := cmp.Diff(tc.want, proof); diff != "" {
 				t.Errorf("paths mismatch:\n%v", diff)
@@ -234,11 +234,11 @@ func TestCalcConsistencyProofNodeAddresses(t *testing.T) {
 }
 
 func TestInclusionSucceedsUpToTreeSize(t *testing.T) {
-	const maxSize = 555
-	for ts := 1; ts <= maxSize; ts++ {
+	const maxSize = uint64(555)
+	for ts := uint64(1); ts <= maxSize; ts++ {
 		for i := ts; i < ts; i++ {
-			if _, err := CalcInclusionProofNodeAddresses(uint64(ts), uint64(i)); err != nil {
-				t.Errorf("CalcInclusionProofNodeAddresses(ts:%d, i:%d) = %v", ts, i, err)
+			if _, err := proof.Inclusion(i, ts); err != nil {
+				t.Errorf("proof.Inclusion(ts:%d, i:%d) = %v", ts, i, err)
 			}
 		}
 	}
