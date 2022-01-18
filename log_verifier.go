@@ -92,13 +92,12 @@ func (v LogVerifier) RootFromInclusionProof(index, size uint64, proof [][]byte, 
 }
 
 // VerifyConsistencyProof checks that the passed in consistency proof is valid
-// between the passed in tree snapshots. Snapshots are the respective tree
-// sizes. Accepts shapshot2 >= snapshot1 >= 0.
-func (v LogVerifier) VerifyConsistencyProof(snapshot1, snapshot2 uint64, root1, root2 []byte, proof [][]byte) error {
+// between the passed in tree sizes. Accepts size2 >= size1 >= 0.
+func (v LogVerifier) VerifyConsistencyProof(size1, size2 uint64, root1, root2 []byte, proof [][]byte) error {
 	switch {
-	case snapshot2 < snapshot1:
-		return fmt.Errorf("snapshot2 (%d) < snapshot1 (%d)", snapshot1, snapshot2)
-	case snapshot1 == snapshot2:
+	case size2 < size1:
+		return fmt.Errorf("size2 (%d) < size1 (%d)", size1, size2)
+	case size1 == size2:
 		if !bytes.Equal(root1, root2) {
 			return RootMismatchError{
 				CalculatedRoot: root1,
@@ -108,8 +107,8 @@ func (v LogVerifier) VerifyConsistencyProof(snapshot1, snapshot2 uint64, root1, 
 			return errors.New("root1 and root2 match, but proof is non-empty")
 		}
 		return nil // Proof OK.
-	case snapshot1 == 0:
-		// Any snapshot greater than 0 is consistent with snapshot 0.
+	case size1 == 0:
+		// Any size greater than 0 is consistent with size 0.
 		if len(proof) > 0 {
 			return fmt.Errorf("expected empty proof, but got %d components", len(proof))
 		}
@@ -118,13 +117,13 @@ func (v LogVerifier) VerifyConsistencyProof(snapshot1, snapshot2 uint64, root1, 
 		return errors.New("empty proof")
 	}
 
-	inner, border := decompInclProof(snapshot1-1, snapshot2)
-	shift := bits.TrailingZeros64(snapshot1)
-	inner -= shift // Note: shift < inner if snapshot1 < snapshot2.
+	inner, border := decompInclProof(size1-1, size2)
+	shift := bits.TrailingZeros64(size1)
+	inner -= shift // Note: shift < inner if size1 < size2.
 
 	// The proof includes the root hash for the sub-tree of size 2^shift.
 	seed, start := proof[0], 1
-	if snapshot1 == 1<<uint(shift) { // Unless snapshot1 is that very 2^shift.
+	if size1 == 1<<uint(shift) { // Unless size1 is that very 2^shift.
 		seed, start = root1, 0
 	}
 	if got, want := len(proof), start+inner+border; got != want {
@@ -132,11 +131,11 @@ func (v LogVerifier) VerifyConsistencyProof(snapshot1, snapshot2 uint64, root1, 
 	}
 	proof = proof[start:]
 	// Now len(proof) == inner+border, and proof is effectively a suffix of
-	// inclusion proof for entry |snapshot1-1| in a tree of size |snapshot2|.
+	// inclusion proof for entry |size1-1| in a tree of size |size2|.
 
 	// Verify the first root.
 	ch := hashChainer(v)
-	mask := (snapshot1 - 1) >> uint(shift) // Start chaining from level |shift|.
+	mask := (size1 - 1) >> uint(shift) // Start chaining from level |shift|.
 	hash1 := ch.chainInnerRight(seed, proof[:inner], mask)
 	hash1 = ch.chainBorderRight(hash1, proof[inner:])
 	if !bytes.Equal(hash1, root1) {
