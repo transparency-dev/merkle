@@ -55,8 +55,8 @@ func NewLogVerifier(hasher LogHasher) LogVerifier {
 
 // VerifyInclusionProof verifies the correctness of the proof given the passed
 // in information about the tree and leaf.
-func (v LogVerifier) VerifyInclusionProof(leafIndex, treeSize int64, proof [][]byte, root []byte, leafHash []byte) error {
-	calcRoot, err := v.RootFromInclusionProof(leafIndex, treeSize, proof, leafHash)
+func (v LogVerifier) VerifyInclusionProof(index, size int64, proof [][]byte, root []byte, leafHash []byte) error {
+	calcRoot, err := v.RootFromInclusionProof(index, size, proof, leafHash)
 	if err != nil {
 		return err
 	}
@@ -70,28 +70,28 @@ func (v LogVerifier) VerifyInclusionProof(leafIndex, treeSize int64, proof [][]b
 }
 
 // RootFromInclusionProof calculates the expected tree root given the proof and leaf.
-// leafIndex starts at 0.  treeSize is the number of nodes in the tree.
+// Leaf index starts at 0. Tree size is the number of leaf nodes in the tree.
 // proof is an array of neighbor nodes from the bottom to the root.
-func (v LogVerifier) RootFromInclusionProof(leafIndex, treeSize int64, proof [][]byte, leafHash []byte) ([]byte, error) {
+func (v LogVerifier) RootFromInclusionProof(index, size int64, proof [][]byte, leafHash []byte) ([]byte, error) {
 	switch {
-	case leafIndex < 0:
-		return nil, fmt.Errorf("leafIndex %d < 0", leafIndex)
-	case treeSize < 0:
-		return nil, fmt.Errorf("treeSize %d < 0", treeSize)
-	case leafIndex >= treeSize:
-		return nil, fmt.Errorf("leafIndex is beyond treeSize: %d >= %d", leafIndex, treeSize)
+	case index < 0:
+		return nil, fmt.Errorf("index %d < 0", index)
+	case size < 0:
+		return nil, fmt.Errorf("size %d < 0", size)
+	case index >= size:
+		return nil, fmt.Errorf("index is beyond size: %d >= %d", index, size)
 	}
 	if got, want := len(leafHash), v.hasher.Size(); got != want {
 		return nil, fmt.Errorf("leafHash has unexpected size %d, want %d", got, want)
 	}
 
-	inner, border := decompInclProof(leafIndex, treeSize)
+	inner, border := decompInclProof(index, size)
 	if got, want := len(proof), inner+border; got != want {
 		return nil, fmt.Errorf("wrong proof size %d, want %d", got, want)
 	}
 
 	ch := hashChainer(v)
-	res := ch.chainInner(leafHash, proof[:inner], leafIndex)
+	res := ch.chainInner(leafHash, proof[:inner], index)
 	res = ch.chainBorderRight(res, proof[inner:])
 	return res, nil
 }
