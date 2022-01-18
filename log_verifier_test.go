@@ -25,14 +25,14 @@ import (
 )
 
 type inclusionProofTestVector struct {
-	leaf     int64
-	snapshot int64
+	leaf     uint64
+	snapshot uint64
 	proof    [][]byte
 }
 
 type consistencyTestVector struct {
-	snapshot1 int64
-	snapshot2 int64
+	snapshot1 uint64
+	snapshot2 uint64
 	proof     [][]byte
 }
 
@@ -106,8 +106,8 @@ var (
 
 // inclusionProbe is a parameter set for inclusion proof verification.
 type inclusionProbe struct {
-	leafIndex int64
-	treeSize  int64
+	leafIndex uint64
+	treeSize  uint64
 	root      []byte
 	leafHash  []byte
 	proof     [][]byte
@@ -117,8 +117,8 @@ type inclusionProbe struct {
 
 // consistencyProbe is a parameter set for consistency proof verification.
 type consistencyProbe struct {
-	snapshot1 int64
-	snapshot2 int64
+	snapshot1 uint64
+	snapshot2 uint64
 	root1     []byte
 	root2     []byte
 	proof     [][]byte
@@ -126,7 +126,7 @@ type consistencyProbe struct {
 	desc string
 }
 
-func corruptInclusionProof(leafIndex, treeSize int64, proof [][]byte, root, leafHash []byte) []inclusionProbe {
+func corruptInclusionProof(leafIndex, treeSize uint64, proof [][]byte, root, leafHash []byte) []inclusionProbe {
 	ret := []inclusionProbe{
 		// Wrong leaf index.
 		{leafIndex - 1, treeSize, root, leafHash, proof, "leafIndex - 1"},
@@ -168,7 +168,7 @@ func corruptInclusionProof(leafIndex, treeSize int64, proof [][]byte, root, leaf
 	return ret
 }
 
-func corruptConsistencyProof(snapshot1, snapshot2 int64, root1, root2 []byte, proof [][]byte) []consistencyProbe {
+func corruptConsistencyProof(snapshot1, snapshot2 uint64, root1, root2 []byte, proof [][]byte) []consistencyProbe {
 	ln := len(proof)
 	ret := []consistencyProbe{
 		// Wrong snapshot index.
@@ -212,7 +212,7 @@ func corruptConsistencyProof(snapshot1, snapshot2 int64, root1, root2 []byte, pr
 	return ret
 }
 
-func verifierCheck(v *LogVerifier, leafIndex, treeSize int64, proof [][]byte, root, leafHash []byte) error {
+func verifierCheck(v *LogVerifier, leafIndex, treeSize uint64, proof [][]byte, root, leafHash []byte) error {
 	// Verify original inclusion proof.
 	got, err := v.RootFromInclusionProof(leafIndex, treeSize, proof, leafHash)
 	if err != nil {
@@ -238,7 +238,7 @@ func verifierCheck(v *LogVerifier, leafIndex, treeSize int64, proof [][]byte, ro
 	return nil
 }
 
-func verifierConsistencyCheck(v *LogVerifier, snapshot1, snapshot2 int64, root1, root2 []byte, proof [][]byte) error {
+func verifierConsistencyCheck(v *LogVerifier, snapshot1, snapshot2 uint64, root1, root2 []byte, proof [][]byte) error {
 	// Verify original consistency proof.
 	if err := v.VerifyConsistencyProof(snapshot1, snapshot2, root1, root2, proof); err != nil {
 		return err
@@ -295,7 +295,7 @@ func TestVerifyInclusionProof(t *testing.T) {
 	proof := [][]byte{}
 
 	probes := []struct {
-		index, size int64
+		index, size uint64
 	}{{0, 0}, {0, 1}, {1, 0}, {2, 1}}
 	for _, p := range probes {
 		t.Run(fmt.Sprintf("probe:%d:%d", p.index, p.size), func(t *testing.T) {
@@ -332,7 +332,7 @@ func TestVerifyConsistencyProof(t *testing.T) {
 	proof2 := [][]byte{sha256EmptyTreeHash}
 
 	tests := []struct {
-		snap1, snap2 int64
+		snap1, snap2 uint64
 		root1, root2 []byte
 		proof        [][]byte
 		wantErr      bool

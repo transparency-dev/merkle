@@ -55,7 +55,7 @@ func NewLogVerifier(hasher LogHasher) LogVerifier {
 
 // VerifyInclusionProof verifies the correctness of the proof given the passed
 // in information about the tree and leaf.
-func (v LogVerifier) VerifyInclusionProof(index, size int64, proof [][]byte, root []byte, leafHash []byte) error {
+func (v LogVerifier) VerifyInclusionProof(index, size uint64, proof [][]byte, root []byte, leafHash []byte) error {
 	calcRoot, err := v.RootFromInclusionProof(index, size, proof, leafHash)
 	if err != nil {
 		return err
@@ -72,13 +72,8 @@ func (v LogVerifier) VerifyInclusionProof(index, size int64, proof [][]byte, roo
 // RootFromInclusionProof calculates the expected tree root given the proof and leaf.
 // Leaf index starts at 0. Tree size is the number of leaf nodes in the tree.
 // proof is an array of neighbor nodes from the bottom to the root.
-func (v LogVerifier) RootFromInclusionProof(index, size int64, proof [][]byte, leafHash []byte) ([]byte, error) {
-	switch {
-	case index < 0:
-		return nil, fmt.Errorf("index %d < 0", index)
-	case size < 0:
-		return nil, fmt.Errorf("size %d < 0", size)
-	case index >= size:
+func (v LogVerifier) RootFromInclusionProof(index, size uint64, proof [][]byte, leafHash []byte) ([]byte, error) {
+	if index >= size {
 		return nil, fmt.Errorf("index is beyond size: %d >= %d", index, size)
 	}
 	if got, want := len(leafHash), v.hasher.Size(); got != want {
@@ -99,10 +94,8 @@ func (v LogVerifier) RootFromInclusionProof(index, size int64, proof [][]byte, l
 // VerifyConsistencyProof checks that the passed in consistency proof is valid
 // between the passed in tree snapshots. Snapshots are the respective tree
 // sizes. Accepts shapshot2 >= snapshot1 >= 0.
-func (v LogVerifier) VerifyConsistencyProof(snapshot1, snapshot2 int64, root1, root2 []byte, proof [][]byte) error {
+func (v LogVerifier) VerifyConsistencyProof(snapshot1, snapshot2 uint64, root1, root2 []byte, proof [][]byte) error {
 	switch {
-	case snapshot1 < 0:
-		return fmt.Errorf("snapshot1 (%d) < 0 ", snapshot1)
 	case snapshot2 < snapshot1:
 		return fmt.Errorf("snapshot2 (%d) < snapshot1 (%d)", snapshot1, snapshot2)
 	case snapshot1 == snapshot2:
@@ -126,7 +119,7 @@ func (v LogVerifier) VerifyConsistencyProof(snapshot1, snapshot2 int64, root1, r
 	}
 
 	inner, border := decompInclProof(snapshot1-1, snapshot2)
-	shift := bits.TrailingZeros64(uint64(snapshot1))
+	shift := bits.TrailingZeros64(snapshot1)
 	inner -= shift // Note: shift < inner if snapshot1 < snapshot2.
 
 	// The proof includes the root hash for the sub-tree of size 2^shift.
@@ -171,12 +164,12 @@ func (v LogVerifier) VerifyConsistencyProof(snapshot1, snapshot2 int64, root1, r
 // point between them is where paths to leaves |index| and |size-1| diverge.
 // Returns lengths of the bottom and upper proof parts correspondingly. The sum
 // of the two determines the correct length of the inclusion proof.
-func decompInclProof(index, size int64) (int, int) {
+func decompInclProof(index, size uint64) (int, int) {
 	inner := innerProofSize(index, size)
-	border := bits.OnesCount64(uint64(index) >> uint(inner))
+	border := bits.OnesCount64(index >> uint(inner))
 	return inner, border
 }
 
-func innerProofSize(index, size int64) int {
-	return bits.Len64(uint64(index ^ (size - 1)))
+func innerProofSize(index, size uint64) int {
+	return bits.Len64(index ^ (size - 1))
 }
