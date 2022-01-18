@@ -16,27 +16,31 @@
 package proof
 
 import (
-	"errors"
 	"fmt"
 	"math/bits"
 
 	"github.com/transparency-dev/merkle/compact"
 )
 
-// Nodes contains information on how to construct a log Merkle tree proof.
+// Nodes contains information on how to construct a log Merkle tree proof. It
+// supports any proof that has at most one ephemeral node, such as inclusion
+// and consistency proofs defined in RFC 6962.
 type Nodes struct {
 	// IDs contains the IDs of non-ephemeral nodes sufficient to build the proof.
+	// If an ephemeral node is needed for a proof, it can be recomputed based on
+	// a subset of nodes in this list.
 	IDs []compact.NodeID
 	// begin is the beginning index (inclusive) into the IDs[begin:end] subslice
-	// of the nodes comprising the ephemeral node.
+	// of the nodes which will be used to re-create the ephemeral node.
 	begin int
 	// end is the ending (exclusive) index into the IDs[begin:end] subslice of
-	// the nodes comprising the ephemeral node.
+	// the nodes which will be used to re-create the ephemeral node.
 	end int
 }
 
 // Inclusion returns the information on how to fetch and construct an inclusion
-// proof for the given leaf index in a log Merkle tree of the given size.
+// proof for the given leaf index in a log Merkle tree of the given size. It
+// requires 0 <= index < size.
 func Inclusion(index, size uint64) (Nodes, error) {
 	if index >= size {
 		return Nodes{}, fmt.Errorf("index %d out of bounds for tree size %d", index, size)
@@ -45,7 +49,8 @@ func Inclusion(index, size uint64) (Nodes, error) {
 }
 
 // Consistency returns the information on how to fetch and construct a
-// consistency proof between the two given tree sizes of a log Merkle tree.
+// consistency proof between the two given tree sizes of a log Merkle tree. It
+// requires 0 <= size1 <= size2.
 func Consistency(size1, size2 uint64) (Nodes, error) {
 	if size1 > size2 {
 		return Nodes{}, fmt.Errorf("tree size %d > %d", size1, size2)
@@ -68,6 +73,9 @@ func Consistency(size1, size2 uint64) (Nodes, error) {
 	// Now append the path from this node to the root of size2.
 	p := nodes(index, level, size2)
 	p.IDs = append(proof, p.IDs...)
+	// Adjust for the case above when we already put one node in the proof. This
+	// happens when size1 is not a power of two, and the verifier needs to be
+	// able to re-create the root hash at size1.
 	if len(proof) == 1 && p.begin < p.end {
 		p.begin++
 		p.end++
@@ -78,7 +86,7 @@ func Consistency(size1, size2 uint64) (Nodes, error) {
 // nodes returns the node IDs necessary to prove that the (level, index) node
 // is included in the Merkle tree of the given size.
 func nodes(index uint64, level uint, size uint64) Nodes {
-	// [begin, end) is the leaves range covered by the (level, index) node.
+	// [begin, end) is the leaf range covered by the (level, index) node.
 	begin, end := index<<level, (index+1)<<level
 	// To prove inclusion of range [begin, end), we only need nodes of compact
 	// range [0, begin) and [end, size). Further down, we need the nodes ordered
@@ -131,8 +139,8 @@ func nodes(index uint64, level uint, size uint64) Nodes {
 //
 // Warning: The passed-in slice of hashes can be modified in-place.
 func (n Nodes) Rehash(h [][]byte, hc func(left, right []byte) []byte) ([][]byte, error) {
-	if len(h) != len(n.IDs) {
-		return nil, errors.New("slice lengths mismatch")
+	if got, want := len(h), len(n.IDs); got != want {
+		return nil, fmt.Errorf("got %d hashes but expected %d", got, want)
 	}
 	cursor := 0
 	// Scan the list of node hashes, and store the rehashed list in-place.
