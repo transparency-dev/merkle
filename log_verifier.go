@@ -53,9 +53,9 @@ func NewLogVerifier(hasher LogHasher) LogVerifier {
 	return LogVerifier{hasher}
 }
 
-// VerifyInclusionProof verifies the correctness of the proof given the passed
+// VerifyInclusion verifies the correctness of the proof given the passed
 // in information about the tree and leaf.
-func (v LogVerifier) VerifyInclusionProof(index, size uint64, proof [][]byte, root []byte, leafHash []byte) error {
+func (v LogVerifier) VerifyInclusion(index, size uint64, proof [][]byte, root []byte, leafHash []byte) error {
 	calcRoot, err := v.RootFromInclusionProof(index, size, proof, leafHash)
 	if err != nil {
 		return err
@@ -91,9 +91,9 @@ func (v LogVerifier) RootFromInclusionProof(index, size uint64, proof [][]byte, 
 	return res, nil
 }
 
-// VerifyConsistencyProof checks that the passed in consistency proof is valid
+// VerifyConsistency checks that the passed in consistency proof is valid
 // between the passed in tree sizes. Accepts size2 >= size1 >= 0.
-func (v LogVerifier) VerifyConsistencyProof(size1, size2 uint64, root1, root2 []byte, proof [][]byte) error {
+func (v LogVerifier) VerifyConsistency(size1, size2 uint64, root1, root2 []byte, proof [][]byte) error {
 	switch {
 	case size2 < size1:
 		return fmt.Errorf("size2 (%d) < size1 (%d)", size1, size2)
