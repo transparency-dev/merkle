@@ -210,3 +210,7 @@ the load on the coordinator with the load on "leaf" workers.
 
 The described approach can be used to implement a scalable tamper-evident log
 based on Merkle trees.
+
+### Witness
+
+![witness](images/witness.png)
