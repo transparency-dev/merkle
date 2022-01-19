@@ -173,3 +173,9 @@ and the one that covers the appended entries.
 [^2]: In RFC 6962 the proof size has fewer nodes in most cases, e.g. the
 perfect nodes on the right border of the tree are replaced by a single
 ephemeral node.
+
+## Applications
+
+### Distributed Tree Construction
+
+![distributed_tree](images/distributed_tree.png)
