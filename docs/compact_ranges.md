@@ -173,3 +173,40 @@ and the one that covers the appended entries.
 [^2]: In RFC 6962 the proof size has fewer nodes in most cases, e.g. the
 perfect nodes on the right border of the tree are replaced by a single
 ephemeral node.
+
+## Applications
+
+In addition to proofs, compact ranges can be used in various ways, such as
+constructing the Merkle tree in a distributed fashion.
+
+### Distributed Tree Construction
+
+Applications that operate large Merkle trees (such as [Certificate
+Transparency](https://certificate.transparency.dev/)), need to compute and/or
+store the nodes of the tree, for example, to be able to serve Merkle tree
+proofs or check the integrity of the whole data structure. It can be expensive
+or infeasible to do on a single server when the rate of updates or the volume
+of data is high.
+
+Since the Merkle tree is a highly regular recursive structure, its geometry can
+be split into pieces of a controllable size that a single server can handle.
+See the picture below for an intuition how.
+
+![distributed_tree](images/distributed_tree.png)
+
+The construction work is split across a number of "leaf" workers, each piece of
+work is based on a relatively small range of leaves. When the corresponding
+part of the tree is processed, the worker sends its compact range up to the
+coordinator. The coordinator merges the received compact ranges in order to
+construct the remaining top part of the tree.
+
+The number of tree nodes decreases exponentially from level to level. This is
+key to tuning performance of the algorithm. If it is requierd to handle a rate
+`O(T)` of processing leaves, it corresponds to only a rate of `O(T / 2^H)` at
+level `H`. By picking a reasonable batch size `B` for "leaf" workers, we allow
+the coordinator to receieve a rate of `O(T / B)` messages (containing just the
+compact ranges). A batch size of around `O(sqrt(T))` entries can help leveling
+the load on the coordinator with the load on "leaf" workers.
+
+The described approach can be used to implement a scalable tamper-evident log
+based on Merkle trees.
