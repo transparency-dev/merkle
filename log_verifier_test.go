@@ -214,21 +214,21 @@ func corruptConsistencyProof(size1, size2 uint64, root1, root2 []byte, proof [][
 
 func verifierCheck(v *LogVerifier, leafIndex, treeSize uint64, proof [][]byte, root, leafHash []byte) error {
 	// Verify original inclusion proof.
-	got, err := v.RootFromInclusionProof(leafIndex, treeSize, proof, leafHash)
+	got, err := v.RootFromInclusionProof(leafIndex, treeSize, leafHash, proof)
 	if err != nil {
 		return err
 	}
 	if !bytes.Equal(got, root) {
 		return fmt.Errorf("got root:\n%x\nexpected:\n%x", got, root)
 	}
-	if err := v.VerifyInclusion(leafIndex, treeSize, proof, root, leafHash); err != nil {
+	if err := v.VerifyInclusion(leafIndex, treeSize, leafHash, proof, root); err != nil {
 		return err
 	}
 
 	probes := corruptInclusionProof(leafIndex, treeSize, proof, root, leafHash)
 	var wrong []string
 	for _, p := range probes {
-		if err := v.VerifyInclusion(p.leafIndex, p.treeSize, p.proof, p.root, p.leafHash); err == nil {
+		if err := v.VerifyInclusion(p.leafIndex, p.treeSize, p.leafHash, p.proof, p.root); err == nil {
 			wrong = append(wrong, p.desc)
 		}
 	}
@@ -282,7 +282,7 @@ func TestVerifyInclusionSingleEntry(t *testing.T) {
 		{emptyHash, emptyHash, true}, // Wrong hash size.
 	} {
 		t.Run(fmt.Sprintf("test:%d", i), func(t *testing.T) {
-			err := v.VerifyInclusion(0, 1, proof, tc.root, tc.leaf)
+			err := v.VerifyInclusion(0, 1, tc.leaf, proof, tc.root)
 			if got, want := err != nil, tc.wantErr; got != want {
 				t.Errorf("error: %v, want %v", got, want)
 			}
@@ -299,13 +299,13 @@ func TestVerifyInclusion(t *testing.T) {
 	}{{0, 0}, {0, 1}, {1, 0}, {2, 1}}
 	for _, p := range probes {
 		t.Run(fmt.Sprintf("probe:%d:%d", p.index, p.size), func(t *testing.T) {
-			if err := v.VerifyInclusion(p.index, p.size, proof, []byte{}, sha256SomeHash); err == nil {
+			if err := v.VerifyInclusion(p.index, p.size, sha256SomeHash, proof, []byte{}); err == nil {
 				t.Error("Incorrectly verified invalid root/leaf")
 			}
-			if err := v.VerifyInclusion(p.index, p.size, proof, sha256EmptyTreeHash, []byte{}); err == nil {
+			if err := v.VerifyInclusion(p.index, p.size, []byte{}, proof, sha256EmptyTreeHash); err == nil {
 				t.Error("Incorrectly verified invalid root/leaf")
 			}
-			if err := v.VerifyInclusion(p.index, p.size, proof, sha256EmptyTreeHash, sha256SomeHash); err == nil {
+			if err := v.VerifyInclusion(p.index, p.size, sha256SomeHash, proof, sha256EmptyTreeHash); err == nil {
 				t.Error("Incorrectly verified invalid root/leaf")
 			}
 		})

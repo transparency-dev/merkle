@@ -56,8 +56,8 @@ func NewLogVerifier(hasher LogHasher) LogVerifier {
 // VerifyInclusion verifies the correctness of the inclusion proof for the leaf
 // with the specified hash and index, relatively to the tree of the given size
 // and root hash. Requires 0 <= index < size.
-func (v LogVerifier) VerifyInclusion(index, size uint64, proof [][]byte, root []byte, leafHash []byte) error {
-	calcRoot, err := v.RootFromInclusionProof(index, size, proof, leafHash)
+func (v LogVerifier) VerifyInclusion(index, size uint64, leafHash []byte, proof [][]byte, root []byte) error {
+	calcRoot, err := v.RootFromInclusionProof(index, size, leafHash, proof)
 	if err != nil {
 		return err
 	}
@@ -73,7 +73,7 @@ func (v LogVerifier) VerifyInclusion(index, size uint64, proof [][]byte, root []
 // RootFromInclusionProof calculates the expected root hash for a tree of the
 // given size, provided a leaf index and hash with the corresponding inclusion
 // proof. Requires 0 <= index < size.
-func (v LogVerifier) RootFromInclusionProof(index, size uint64, proof [][]byte, leafHash []byte) ([]byte, error) {
+func (v LogVerifier) RootFromInclusionProof(index, size uint64, leafHash []byte, proof [][]byte) ([]byte, error) {
 	if index >= size {
 		return nil, fmt.Errorf("index is beyond size: %d >= %d", index, size)
 	}
