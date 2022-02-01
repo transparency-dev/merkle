@@ -215,32 +215,34 @@ based on Merkle trees.
 
 Logs based on Merkle trees are rarely static - usually they grow in append-only
 fashion. Proofs built for one state of the tree get outdated with later states.
-If proofs are made using compact ranges, they can be updated by merging in the
-compact range between the previous and the next tree size.
+When proofs are represented using compact ranges, they can be updated by
+merging in the compact range between the previous and the next tree size.
 
 For example, an inclusion proof for range `[L, R)` in a tree of size `N` can be
-represented with compact ranges `[0, L)` and `[R, N)`, as described in a
-[section](#arbitrary-inclusion-proofs) above. When the tree moves to a state of
-size `N+delta`, it is possible to update this inclusion proof by merging the
-compact range `[R, N)` with `[N, N+delta)`.
+represented with a pair of compact ranges `[0, L)` and `[R, N)`, as described
+in the section on [arbitrary inclusion proofs](#arbitrary-inclusion-proofs).
+When the tree moves to a state of size `N+delta`, it is possible to update this
+inclusion proof by merging the compact range `[R, N)` with `[N, N+delta)`.
 
 Updating a proof incrementally is more efficient in terms of space / bandwidth
-than fetching an entire proof each time. For example, a consistency proof in a
-tree up to size `N` takes `O(log N)` space, and fetching it `O(N)` time takes
-`O(N log N)`. Incremental updates with compact ranges will total up as `O(N)`
-since each of the tree nodes is used in at most one compact range in the series.
+than fetching an entire proof each time. For example, consistency proofs in a
+tree growing to size `N` take `O(log N)` space, and fetching them `O(N)` times
+takes `O(N log N)` in total. Incremental updates with compact ranges will total
+up as `O(N)` since each of the tree nodes is used in at most one compact range
+in the series.
 
 ### Witness
 
 A witness is an entity that watches the state of the log and attests to its
-consistency. As described in a [section](#root-hash) above, the tree state can
-be represented, for example, as a single root hash, or a compact range `[0, N)`.
+consistency. As described in the [Root Hash](#root-hash) section above, the
+tree state can be represented, for example, as a single root hash, or a compact
+range `[0, N)`.
 
-The benefit of storing a compact range is in the ability to incrementally update
-it as the tree state evolves. See the picture below.
+The benefit of storing a compact range is in the ability to incrementally
+update it as the tree state evolves. See the picture below.
 
 ![witness](images/witness.png)
 
-Similarly to the [updatable proofs](#updatable-proofs), the accumulated complexity
-of updating the state `O(N)` times is `O(N)`, as opposed to `O(N log N)` for the
-case of storing a single hash.
+Similarly to the [updatable proofs](#updatable-proofs), the accumulated space /
+bandwidth complexity of updating the state `O(N)` times is `O(N)`, as opposed
+to `O(N log N)` if the witness only stores the single root hash.
