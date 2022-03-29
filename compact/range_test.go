@@ -220,7 +220,7 @@ func TestGoldenRanges(t *testing.T) {
 }
 
 // Merge down from [339,340) to [0,340) by prepending single entries.
-func TestMergeBackwards(t *testing.T) {
+func TestAppendBackwards(t *testing.T) {
 	const numNodes = uint64(340)
 	tree, visit := newTree(t, numNodes)
 	rng := factory.NewEmptyRange(numNodes)
@@ -243,7 +243,7 @@ func TestMergeBackwards(t *testing.T) {
 
 // Build ranges [0, 13), [13, 26), ... [208,220) by appending single entries to
 // each. Then append those ranges one by one to [0,0), to get [0,220).
-func TestMergeInBatches(t *testing.T) {
+func TestAppendInBatches(t *testing.T) {
 	const numNodes = uint64(220)
 	const batch = uint64(13)
 	tree, visit := newTree(t, numNodes)
@@ -274,7 +274,7 @@ func TestMergeInBatches(t *testing.T) {
 }
 
 // Build many trees of random size by randomly merging their sub-ranges.
-func TestMergeRandomly(t *testing.T) {
+func TestAppendRandomly(t *testing.T) {
 	for seed := int64(1); seed < 100; seed++ {
 		t.Run(fmt.Sprintf("seed:%d", seed), func(t *testing.T) {
 			rnd := rand.New(rand.NewSource(seed))
