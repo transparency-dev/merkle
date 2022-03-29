@@ -96,7 +96,8 @@ func (r *Range) Append(hash []byte, visitor VisitFn) error {
 
 // AppendRange extends the compact range by merging in the other compact range
 // from the right. It uses the tree hasher to calculate hashes of newly created
-// nodes, and reports them through the visitor function (if non-nil).
+// nodes, and reports them through the visitor function (if non-nil). The other
+// range must begin where the current range ends.
 func (r *Range) AppendRange(other *Range, visitor VisitFn) error {
 	if other.f != r.f {
 		return errors.New("incompatible ranges")
