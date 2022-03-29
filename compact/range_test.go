@@ -308,7 +308,7 @@ func TestAppendRandomly(t *testing.T) {
 }
 
 func TestMergeAndIntersect(t *testing.T) {
-	const size = uint64(16)
+	const size = uint64(20)
 	tree, visit := newTree(t, size)
 	getRange := func(begin, end uint64) *Range {
 		cr := factory.NewEmptyRange(begin)
