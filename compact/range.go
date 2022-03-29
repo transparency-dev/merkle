@@ -111,6 +111,35 @@ func (r *Range) AppendRange(other *Range, visitor VisitFn) error {
 	return r.appendImpl(other.end, other.hashes[0], other.hashes[1:], visitor)
 }
 
+// Merge extends the compact range by merging in the other compact range from
+// the right. It uses the tree hasher to calculate hashes of newly created
+// nodes, and reports them through the visitor function (if non-nil). The other
+// range must begin between the current range's begin and end.
+//
+// Warning: This method modifies both this and the other Range.
+// Warning: This method is experimental.
+func (r *Range) Merge(other *Range, visitor VisitFn) error {
+	if other.f != r.f {
+		return errors.New("incompatible ranges")
+	} else if other.begin < r.begin {
+		return errors.New("ranges unordered")
+	}
+	if got, want := other.begin, r.end; got > want {
+		return fmt.Errorf("ranges are disjoint: other.begin=%d, want <= %d", got, want)
+	}
+	if other.end <= r.end { // The other range is nested.
+		return nil
+	}
+
+	left, right := Decompose(other.begin, r.end)
+	r.end -= right
+	r.hashes = r.hashes[:rangeSize(r.begin, r.end)]
+	other.begin += left
+	other.hashes = other.hashes[len(other.hashes)-rangeSize(other.begin, other.end):]
+
+	return r.AppendRange(other, visitor)
+}
+
 // GetRootHash returns the root hash of the Merkle tree represented by this
 // compact range. Requires the range to start at index 0. If the range is
 // empty, returns nil.

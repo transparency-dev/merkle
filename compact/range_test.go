@@ -307,6 +307,43 @@ func TestAppendRandomly(t *testing.T) {
 	}
 }
 
+func TestMerge(t *testing.T) {
+	const size = uint64(16)
+	tree, visit := newTree(t, size)
+	getRange := func(begin, end uint64) *Range {
+		cr := factory.NewEmptyRange(begin)
+		for i := begin; i < end; i++ {
+			if err := cr.Append(tree.leaf(i), visit); err != nil {
+				t.Fatalf("Append: %v", err)
+			}
+		}
+		return cr
+	}
+
+	type pair struct {
+		begin, end uint64
+	}
+	var pairs []pair
+	for begin := uint64(0); begin <= size; begin++ {
+		for end := begin; end <= size; end++ {
+			pairs = append(pairs, pair{begin: begin, end: end})
+		}
+	}
+	for _, first := range pairs {
+		for _, second := range pairs {
+			if second.begin < first.begin || second.begin > first.end {
+				continue
+			}
+			rng := getRange(first.begin, first.end)
+			other := getRange(second.begin, second.end)
+			if err := rng.Merge(other, visit); err != nil {
+				t.Fatalf("Merge: %v", err)
+			}
+			tree.verifyRange(t, rng, true)
+		}
+	}
+}
+
 func TestNewRange(t *testing.T) {
 	const numNodes = uint64(123)
 	tree, visit := newTree(t, numNodes)
