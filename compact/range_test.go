@@ -307,7 +307,7 @@ func TestAppendRandomly(t *testing.T) {
 	}
 }
 
-func TestMerge(t *testing.T) {
+func TestMergeAndIntersect(t *testing.T) {
 	const size = uint64(16)
 	tree, visit := newTree(t, size)
 	getRange := func(begin, end uint64) *Range {
@@ -334,13 +334,33 @@ func TestMerge(t *testing.T) {
 			if second.begin < first.begin || second.begin > first.end {
 				continue
 			}
+			t.Logf("%+v : %+v", first, second)
 			rng := getRange(first.begin, first.end)
 			other := getRange(second.begin, second.end)
 			if err := rng.Merge(other, visit); err != nil {
 				t.Fatalf("Merge: %v", err)
 			}
+			checkRangeBounds(t, rng, first.begin, max(first.end, second.end))
 			tree.verifyRange(t, rng, true)
+
+			rng = getRange(first.begin, first.end)
+			other = getRange(second.begin, second.end)
+			inters, err := rng.Intersect(other)
+			if err != nil {
+				t.Fatalf("Intersect: %v", err)
+			}
+			checkRangeBounds(t, inters, second.begin, min(first.end, second.end))
+			tree.verifyRange(t, inters, true)
 		}
+	}
+}
+
+func checkRangeBounds(t *testing.T, r *Range, begin, end uint64) {
+	if got, want := r.Begin(), begin; got != want {
+		t.Fatalf("range [%d, %d): want begin %d", got, r.End(), want)
+	}
+	if got, want := r.End(), end; got != want {
+		t.Fatalf("range [%d, %d): want end %d", r.Begin(), got, want)
 	}
 }
 
@@ -849,4 +869,18 @@ func shorten(hash []byte) []byte {
 		return hash
 	}
 	return hash[:4]
+}
+
+func min(a, b uint64) uint64 {
+	if b < a {
+		a = b
+	}
+	return a
+}
+
+func max(a, b uint64) uint64 {
+	if b > a {
+		a = b
+	}
+	return a
 }

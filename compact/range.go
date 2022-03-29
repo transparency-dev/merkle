@@ -119,25 +119,19 @@ func (r *Range) AppendRange(other *Range, visitor VisitFn) error {
 // Warning: This method modifies both this and the other Range.
 // Warning: This method is experimental.
 func (r *Range) Merge(other *Range, visitor VisitFn) error {
-	if other.f != r.f {
-		return errors.New("incompatible ranges")
-	} else if other.begin < r.begin {
-		return errors.New("ranges unordered")
+	if _, err := r.intersectImpl(other); err != nil {
+		return err
 	}
-	if got, want := other.begin, r.end; got > want {
-		return fmt.Errorf("ranges are disjoint: other.begin=%d, want <= %d", got, want)
-	}
-	if other.end <= r.end { // The other range is nested.
-		return nil
-	}
-
-	left, right := Decompose(other.begin, r.end)
-	r.end -= right
-	r.hashes = r.hashes[:rangeSize(r.begin, r.end)]
-	other.begin += left
-	other.hashes = other.hashes[len(other.hashes)-rangeSize(other.begin, other.end):]
-
 	return r.AppendRange(other, visitor)
+}
+
+// Intersect returns the intersection of two compact ranges. The other range
+// must begin between the current range's begin and end.
+//
+// Warning: This method modifies both this and the other Range.
+// Warning: This method is experimental.
+func (r *Range) Intersect(other *Range) (*Range, error) {
+	return r.intersectImpl(other)
 }
 
 // GetRootHash returns the root hash of the Merkle tree represented by this
@@ -236,6 +230,48 @@ func (r *Range) appendImpl(end uint64, seed []byte, hashes [][]byte, visitor Vis
 	r.hashes = append(append(r.hashes[:idx1], seed), hashes[idx2:]...)
 	r.end = end
 	return nil
+}
+
+// intersectImpl returns the intersection of two compact ranges. It also
+// modifies the `r` and `other` compact ranges in such a way that they become
+// adjacent, and a subsequent AppendRange operation between them will result in
+// a compact range that represents the union of the two original ranges.
+func (r *Range) intersectImpl(other *Range) (*Range, error) {
+	if other.f != r.f {
+		return nil, errors.New("incompatible ranges")
+	} else if other.begin < r.begin {
+		return nil, errors.New("ranges unordered")
+	}
+
+	if other.end <= r.end { // The other range is nested.
+		intersection := *other             // Note: Force the clone.
+		*other = *r.f.NewEmptyRange(r.end) // Note: Force the rewrite.
+		return &intersection, nil
+	}
+
+	begin, end := other.begin, r.end
+	if begin > end { // The other range is disjoint.
+		return nil, fmt.Errorf("ranges are disjoint: other.begin=%d, want <= %d", begin, end)
+	} else if begin == end { // The ranges touch ends.
+		return r.f.NewEmptyRange(begin), nil // The intersection is empty.
+	}
+
+	// Decompose the intersection range, allocate the resulting slice of hashes.
+	left, right := Decompose(begin, end)
+	leftBits, rightBits := bits.OnesCount64(left), bits.OnesCount64(right)
+	hashes := make([][]byte, 0, leftBits+rightBits)
+
+	// Cut off the intersection hashes from the `other` range.
+	hashes = append(hashes, other.hashes[:leftBits]...)
+	other.begin += left
+	other.hashes = other.hashes[leftBits:]
+
+	// Cut off the intersection hashes from the `r` range.
+	hashes = append(hashes, r.hashes[len(r.hashes)-rightBits:]...)
+	r.end -= right
+	r.hashes = r.hashes[:len(r.hashes)-rightBits]
+
+	return &Range{f: r.f, begin: begin, end: end, hashes: hashes}, nil
 }
 
 // getMergePath returns the merging path between the compact range [begin, mid)
