@@ -1,8 +1,9 @@
 # Merkle
 
+[![GoDoc](https://godoc.org/github.com/transparency-dev/merkle?status.svg)](https://godoc.org/github.com/transparency-dev/merkle)
 [![Go Report
 Card](https://goreportcard.com/badge/github.com/transparency-dev/merkle)](https://goreportcard.com/report/github.com/transparency-dev/merkle)
-[![GoDoc](https://godoc.org/github.com/transparency-dev/merkle?status.svg)](https://godoc.org/github.com/transparency-dev/merkle)
+[![codecov](https://codecov.io/gh/transparency-dev/merkle/branch/main/graph/badge.svg?token=BBCRAMOBY2)](https://codecov.io/gh/transparency-dev/merkle)
 [![Slack
 Status](https://img.shields.io/badge/Slack-Chat-blue.svg)](https://gtrillian.slack.com/)
 
