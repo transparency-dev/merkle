@@ -121,6 +121,8 @@ func TestInclusion(t *testing.T) {
 			} else if err != nil {
 				t.Fatalf("Inclusion: %v", err)
 			}
+			// Ignore the ephemeral node, it is tested separately.
+			proof.ephem = compact.NodeID{}
 			if diff := cmp.Diff(tc.want, proof, cmp.AllowUnexported(Nodes{})); diff != "" {
 				t.Errorf("paths mismatch:\n%v", diff)
 			}
@@ -226,6 +228,8 @@ func TestConsistency(t *testing.T) {
 			} else if err != nil {
 				t.Fatalf("Consistency: %v", err)
 			}
+			// Ignore the ephemeral node, it is tested separately.
+			proof.ephem = compact.NodeID{}
 			if diff := cmp.Diff(tc.want, proof, cmp.AllowUnexported(Nodes{})); diff != "" {
 				t.Errorf("paths mismatch:\n%v", diff)
 			}
@@ -252,6 +256,52 @@ func TestConsistencySucceedsUpToTreeSize(t *testing.T) {
 				t.Errorf("Consistency(%d, %d) = %v", s1, s2, err)
 			}
 		}
+	}
+}
+
+func TestEphem(t *testing.T) {
+	id := compact.NewNodeID
+	for _, tc := range []struct {
+		index uint64
+		size  uint64
+		want  compact.NodeID
+	}{
+		// Edge case: For perfect trees the ephemeral node is the sibling of the
+		// root. However, it will not be used in the proof, as the corresponding
+		// subtree is empty.
+		{index: 3, size: 32, want: id(5, 1)},
+
+		{index: 0, size: 9, want: id(3, 1)},
+		{index: 0, size: 13, want: id(3, 1)},
+		{index: 7, size: 13, want: id(3, 1)},
+		{index: 8, size: 13, want: id(2, 3)},
+		{index: 11, size: 13, want: id(2, 3)},
+		// More edge cases when the computed ephemeral node is not used in the
+		// proof, because it is fully outside the tree border.
+		{index: 12, size: 13, want: id(0, 13)},
+		{index: 13, size: 14, want: id(1, 7)},
+
+		// There is only one node (level 0, index 1024) in the right subtree, but
+		// the ephemeral node is at level 10 rather then level 0. This is because
+		// for the purposes of the proof this node is *effectively* at level 10.
+		{index: 123, size: 1025, want: id(10, 1)},
+
+		{index: 0, size: 0xFFFF, want: id(15, 1)},
+		{index: 0xF000, size: 0xFFFF, want: id(11, 0x1F)},
+		{index: 0xFF00, size: 0xFFFF, want: id(7, 0x1FF)},
+		{index: 0xFFF0, size: 0xFFFF, want: id(3, 0x1FFF)},
+		{index: 0xFFFF - 1, size: 0xFFFF, want: id(0, 0xFFFF)},
+	} {
+		t.Run(fmt.Sprintf("%d:%d", tc.index, tc.size), func(t *testing.T) {
+			nodes, err := Inclusion(tc.index, tc.size)
+			if err != nil {
+				t.Fatalf("Inclusion: %v", err)
+			}
+			got, _, _ := nodes.Ephem()
+			if want := tc.want; got != want {
+				t.Errorf("Ephem: got %+v, want %+v", got, want)
+			}
+		})
 	}
 }
 

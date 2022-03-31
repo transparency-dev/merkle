@@ -36,6 +36,10 @@ type Nodes struct {
 	// end is the ending (exclusive) index into the IDs[begin:end] subslice of
 	// the nodes which will be used to re-create the ephemeral node.
 	end int
+	// ephem is the ID of the ephemeral node in the proof. This node is a common
+	// ancestor of all nodes in IDs[begin:end]. It is the node that otherwise
+	// would have been used in the proof if the tree was perfect.
+	ephem compact.NodeID
 }
 
 // Inclusion returns the information on how to fetch and construct an inclusion
@@ -129,7 +133,17 @@ func nodes(index uint64, level uint, size uint64) Nodes {
 		len1, len2 = 0, 0
 	}
 
-	return Nodes{IDs: nodes, begin: len1, end: len2}
+	return Nodes{IDs: nodes, begin: len1, end: len2, ephem: node.Sibling()}
+}
+
+// Ephem returns the ephemeral node, and indices begin and end, such that
+// IDs[begin:end] slice contains the child nodes of the ephemeral node.
+//
+// The list is empty iff there are no ephemeral nodes in the proof. Some
+// examples of when this can happen: a proof in a perfect tree; an inclusion
+// proof for a leaf in a perfect subtree at the right edge of the tree.
+func (n Nodes) Ephem() (compact.NodeID, int, int) {
+	return n.ephem, n.begin, n.end
 }
 
 // Rehash computes the proof based on the slice of node hashes corresponding to
