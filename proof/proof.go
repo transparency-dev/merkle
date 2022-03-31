@@ -90,51 +90,46 @@ func Consistency(size1, size2 uint64) (Nodes, error) {
 // nodes returns the node IDs necessary to prove that the (level, index) node
 // is included in the Merkle tree of the given size.
 func nodes(index uint64, level uint, size uint64) Nodes {
-	// [begin, end) is the leaf range covered by the (level, index) node.
-	begin, end := index<<level, (index+1)<<level
-	// To prove inclusion of range [begin, end), we only need nodes of compact
-	// range [0, begin) and [end, size). Further down, we need the nodes ordered
-	// by level from leaves towards the root.
-	left := reverse(compact.RangeNodes(0, begin))
-	// We decompose the [end, size) range into [end, end+l) and [end+l, size).
-	// The first one (named `middle` here) contains all the nodes that don't have
-	// a left sibling within [end, size), and the second one (named `right`
-	// below) contains all the nodes that don't have a right sibling.
-	l, _ := compact.Decompose(end, size)
-	middle := compact.RangeNodes(end, end+l)
-	// Nodes that don't have a right sibling (i.e. the right border of the tree)
-	// are special, because their hashes are collapsed into a single "ephemeral"
-	// hash. It can be derived from the hashes of compact range [end+l, size).
-	right := reverse(compact.RangeNodes(end+l, size))
+	node := compact.NewNodeID(level, index)
+	begin, _ := node.Coverage()
 
-	// The level in the ordered list of nodes where the rehashed nodes appear in
-	// lieu of the "ephemeral" node. This is equal to the level where the path to
-	// the `begin` index diverges from the path to `size`.
-	rehashLevel := uint(bits.Len64(begin^size) - 1)
-	var rehashBegin, rehashEnd int
+	// Compute the level at which the path to leaf `begin` diverges from the path
+	// to `size`. This is where the ephemeral node is located. The ephemeral node
+	// represents a subtree that is not complete in the tree of the given size,
+	// so we instead provide the minimal list of non-ephemeral nodes which cover
+	// the same range of leaves.
+	ephemLevel := uint(bits.Len64(begin^size) - 1)
 
-	// Merge the three compact ranges into a single proof ordered by node level
-	// from leaves towards the root, i.e. the format specified in RFC 6962.
-	proof := make([]compact.NodeID, 0, len(left)+len(middle)+len(right))
-	i, j := 0, 0
-	for l, levels := level, uint(bits.Len64(size-1)); l < levels; l++ {
-		if i < len(left) && left[i].Level == l {
-			proof = append(proof, left[i])
-			i++
-		} else if j < len(middle) && middle[j].Level == l {
-			proof = append(proof, middle[j])
-			j++
-		}
-		if l == rehashLevel {
-			proof = append(proof, right...)
-			if len(right) > 1 {
-				rehashBegin = len(proof) - len(right)
-				rehashEnd = len(proof)
-			}
-		}
+	// The first portion of the proof consists of the siblings for nodes of the
+	// path going up to the level at which the ephemeral node appears.
+	// TODO(pavelkalinnikov): Pre-allocate the full capacity.
+	nodes := make([]compact.NodeID, 0, ephemLevel-level)
+	for ; node.Level < ephemLevel; node = node.Parent() {
+		nodes = append(nodes, node.Sibling())
+	}
+	// This portion of the proof covers the range under the reached node. The
+	// ranges to the left and to the right from it remain to be covered.
+	begin, end := node.Coverage()
+
+	// Add all the nodes (potentially none) that cover the right range, and
+	// represent the ephemeral node. Reverse them so that the Rehash method can
+	// process hashes in the convenient order, from lower to upper levels.
+	len1 := len(nodes)
+	nodes = append(nodes, reverse(compact.RangeNodes(end, size))...)
+	len2 := len(nodes)
+	// Add the nodes that cover the left range, ordered increasingly by level.
+	nodes = append(nodes, reverse(compact.RangeNodes(0, begin))...)
+
+	// nodes[len1:len2] contains the nodes representing the ephemeral node. If
+	// it's empty or only has one node, make it zero.
+	//
+	// TODO(pavelkalinnikov): Don't empty the single node case. It is still a
+	// valuable info to expose.
+	if len1+1 >= len2 {
+		len1, len2 = 0, 0
 	}
 
-	return Nodes{IDs: proof, begin: rehashBegin, end: rehashEnd}
+	return Nodes{IDs: nodes, begin: len1, end: len2}
 }
 
 // Rehash computes the proof based on the slice of node hashes corresponding to
