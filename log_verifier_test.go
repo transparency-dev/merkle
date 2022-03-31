@@ -25,15 +25,15 @@ import (
 )
 
 type inclusionProofTestVector struct {
-	leaf     int64
-	snapshot int64
-	proof    [][]byte
+	leaf  uint64
+	size  uint64
+	proof [][]byte
 }
 
 type consistencyTestVector struct {
-	snapshot1 int64
-	snapshot2 int64
-	proof     [][]byte
+	size1 uint64
+	size2 uint64
+	proof [][]byte
 }
 
 var (
@@ -106,8 +106,8 @@ var (
 
 // inclusionProbe is a parameter set for inclusion proof verification.
 type inclusionProbe struct {
-	leafIndex int64
-	treeSize  int64
+	leafIndex uint64
+	treeSize  uint64
 	root      []byte
 	leafHash  []byte
 	proof     [][]byte
@@ -117,16 +117,16 @@ type inclusionProbe struct {
 
 // consistencyProbe is a parameter set for consistency proof verification.
 type consistencyProbe struct {
-	snapshot1 int64
-	snapshot2 int64
-	root1     []byte
-	root2     []byte
-	proof     [][]byte
+	size1 uint64
+	size2 uint64
+	root1 []byte
+	root2 []byte
+	proof [][]byte
 
 	desc string
 }
 
-func corruptInclusionProof(leafIndex, treeSize int64, proof [][]byte, root, leafHash []byte) []inclusionProbe {
+func corruptInclusionProof(leafIndex, treeSize uint64, proof [][]byte, root, leafHash []byte) []inclusionProbe {
 	ret := []inclusionProbe{
 		// Wrong leaf index.
 		{leafIndex - 1, treeSize, root, leafHash, proof, "leafIndex - 1"},
@@ -168,36 +168,36 @@ func corruptInclusionProof(leafIndex, treeSize int64, proof [][]byte, root, leaf
 	return ret
 }
 
-func corruptConsistencyProof(snapshot1, snapshot2 int64, root1, root2 []byte, proof [][]byte) []consistencyProbe {
+func corruptConsistencyProof(size1, size2 uint64, root1, root2 []byte, proof [][]byte) []consistencyProbe {
 	ln := len(proof)
 	ret := []consistencyProbe{
-		// Wrong snapshot index.
-		{snapshot1 - 1, snapshot2, root1, root2, proof, "snapshot1 - 1"},
-		{snapshot1 + 1, snapshot2, root1, root2, proof, "snapshot1 + 1"},
-		{snapshot1 ^ 2, snapshot2, root1, root2, proof, "snapshot1 ^ 2"},
+		// Wrong size1.
+		{size1 - 1, size2, root1, root2, proof, "size1 - 1"},
+		{size1 + 1, size2, root1, root2, proof, "size1 + 1"},
+		{size1 ^ 2, size2, root1, root2, proof, "size1 ^ 2"},
 		// Wrong tree height.
-		{snapshot1, snapshot2 * 2, root1, root2, proof, "snapshot2 * 2"},
-		{snapshot1, snapshot2 / 2, root1, root2, proof, "snapshot2 / 2"},
+		{size1, size2 * 2, root1, root2, proof, "size2 * 2"},
+		{size1, size2 / 2, root1, root2, proof, "size2 / 2"},
 		// Wrong root.
-		{snapshot1, snapshot2, []byte("WrongRoot"), root2, proof, "wrong root1"},
-		{snapshot1, snapshot2, root1, []byte("WrongRoot"), proof, "wrong root2"},
-		{snapshot1, snapshot2, root2, root1, proof, "swapped roots"},
+		{size1, size2, []byte("WrongRoot"), root2, proof, "wrong root1"},
+		{size1, size2, root1, []byte("WrongRoot"), proof, "wrong root2"},
+		{size1, size2, root2, root1, proof, "swapped roots"},
 		// Empty proof.
-		{snapshot1, snapshot2, root1, root2, [][]byte{}, "empty proof"},
+		{size1, size2, root1, root2, [][]byte{}, "empty proof"},
 		// Add garbage at the end.
-		{snapshot1, snapshot2, root1, root2, extend(proof, []byte{}), "trailing garbage"},
-		{snapshot1, snapshot2, root1, root2, extend(proof, root1), "trailing root1"},
-		{snapshot1, snapshot2, root1, root2, extend(proof, root2), "trailing root2"},
+		{size1, size2, root1, root2, extend(proof, []byte{}), "trailing garbage"},
+		{size1, size2, root1, root2, extend(proof, root1), "trailing root1"},
+		{size1, size2, root1, root2, extend(proof, root2), "trailing root2"},
 		// Add garbage at the front.
-		{snapshot1, snapshot2, root1, root2, prepend(proof, []byte{}), "preceding garbage"},
-		{snapshot1, snapshot2, root1, root2, prepend(proof, root1), "preceding root1"},
-		{snapshot1, snapshot2, root1, root2, prepend(proof, root2), "preceding root2"},
-		{snapshot1, snapshot2, root1, root2, prepend(proof, proof[0]), "preceding proof[0]"},
+		{size1, size2, root1, root2, prepend(proof, []byte{}), "preceding garbage"},
+		{size1, size2, root1, root2, prepend(proof, root1), "preceding root1"},
+		{size1, size2, root1, root2, prepend(proof, root2), "preceding root2"},
+		{size1, size2, root1, root2, prepend(proof, proof[0]), "preceding proof[0]"},
 	}
 
 	// Remove a node from the end.
 	if ln > 0 {
-		ret = append(ret, consistencyProbe{snapshot1, snapshot2, root1, root2, proof[:ln-1], "truncated proof"})
+		ret = append(ret, consistencyProbe{size1, size2, root1, root2, proof[:ln-1], "truncated proof"})
 	}
 
 	// Modify single bit in an element of the proof.
@@ -206,29 +206,29 @@ func corruptConsistencyProof(snapshot1, snapshot2 int64, root1, root2 []byte, pr
 		wrongProof[i] = append([]byte(nil), wrongProof[i]...) // But also the modified data.
 		wrongProof[i][0] ^= 16                                // Flip the bit.
 		desc := fmt.Sprintf("modified proof[%d] bit 4", i)
-		ret = append(ret, consistencyProbe{snapshot1, snapshot2, root1, root2, wrongProof, desc})
+		ret = append(ret, consistencyProbe{size1, size2, root1, root2, wrongProof, desc})
 	}
 
 	return ret
 }
 
-func verifierCheck(v *LogVerifier, leafIndex, treeSize int64, proof [][]byte, root, leafHash []byte) error {
+func verifierCheck(v *LogVerifier, leafIndex, treeSize uint64, proof [][]byte, root, leafHash []byte) error {
 	// Verify original inclusion proof.
-	got, err := v.RootFromInclusionProof(leafIndex, treeSize, proof, leafHash)
+	got, err := v.RootFromInclusionProof(leafIndex, treeSize, leafHash, proof)
 	if err != nil {
 		return err
 	}
 	if !bytes.Equal(got, root) {
 		return fmt.Errorf("got root:\n%x\nexpected:\n%x", got, root)
 	}
-	if err := v.VerifyInclusionProof(leafIndex, treeSize, proof, root, leafHash); err != nil {
+	if err := v.VerifyInclusion(leafIndex, treeSize, leafHash, proof, root); err != nil {
 		return err
 	}
 
 	probes := corruptInclusionProof(leafIndex, treeSize, proof, root, leafHash)
 	var wrong []string
 	for _, p := range probes {
-		if err := v.VerifyInclusionProof(p.leafIndex, p.treeSize, p.proof, p.root, p.leafHash); err == nil {
+		if err := v.VerifyInclusion(p.leafIndex, p.treeSize, p.leafHash, p.proof, p.root); err == nil {
 			wrong = append(wrong, p.desc)
 		}
 	}
@@ -238,21 +238,21 @@ func verifierCheck(v *LogVerifier, leafIndex, treeSize int64, proof [][]byte, ro
 	return nil
 }
 
-func verifierConsistencyCheck(v *LogVerifier, snapshot1, snapshot2 int64, root1, root2 []byte, proof [][]byte) error {
+func verifierConsistencyCheck(v *LogVerifier, size1, size2 uint64, root1, root2 []byte, proof [][]byte) error {
 	// Verify original consistency proof.
-	if err := v.VerifyConsistencyProof(snapshot1, snapshot2, root1, root2, proof); err != nil {
+	if err := v.VerifyConsistency(size1, size2, root1, root2, proof); err != nil {
 		return err
 	}
 	// For simplicity test only non-trivial proofs that have root1 != root2,
-	// snapshot1 != 0 and snapshot1 != snapshot2.
+	// size1 != 0 and size1 != size2.
 	if len(proof) == 0 {
 		return nil
 	}
 
-	probes := corruptConsistencyProof(snapshot1, snapshot2, root1, root2, proof)
+	probes := corruptConsistencyProof(size1, size2, root1, root2, proof)
 	var wrong []string
 	for _, p := range probes {
-		if err := v.VerifyConsistencyProof(p.snapshot1, p.snapshot2, p.root1, p.root2, p.proof); err == nil {
+		if err := v.VerifyConsistency(p.size1, p.size2, p.root1, p.root2, p.proof); err == nil {
 			wrong = append(wrong, p.desc)
 		}
 	}
@@ -262,7 +262,7 @@ func verifierConsistencyCheck(v *LogVerifier, snapshot1, snapshot2 int64, root1,
 	return nil
 }
 
-func TestVerifyInclusionProofSingleEntry(t *testing.T) {
+func TestVerifyInclusionSingleEntry(t *testing.T) {
 	v := NewLogVerifier(rfc6962.DefaultHasher)
 	data := []byte("data")
 	// Root and leaf hash for 1-entry tree are the same.
@@ -282,7 +282,7 @@ func TestVerifyInclusionProofSingleEntry(t *testing.T) {
 		{emptyHash, emptyHash, true}, // Wrong hash size.
 	} {
 		t.Run(fmt.Sprintf("test:%d", i), func(t *testing.T) {
-			err := v.VerifyInclusionProof(0, 1, proof, tc.root, tc.leaf)
+			err := v.VerifyInclusion(0, 1, tc.leaf, proof, tc.root)
 			if got, want := err != nil, tc.wantErr; got != want {
 				t.Errorf("error: %v, want %v", got, want)
 			}
@@ -290,22 +290,22 @@ func TestVerifyInclusionProofSingleEntry(t *testing.T) {
 	}
 }
 
-func TestVerifyInclusionProof(t *testing.T) {
+func TestVerifyInclusion(t *testing.T) {
 	v := NewLogVerifier(rfc6962.DefaultHasher)
 	proof := [][]byte{}
 
 	probes := []struct {
-		index, size int64
+		index, size uint64
 	}{{0, 0}, {0, 1}, {1, 0}, {2, 1}}
 	for _, p := range probes {
 		t.Run(fmt.Sprintf("probe:%d:%d", p.index, p.size), func(t *testing.T) {
-			if err := v.VerifyInclusionProof(p.index, p.size, proof, []byte{}, sha256SomeHash); err == nil {
+			if err := v.VerifyInclusion(p.index, p.size, sha256SomeHash, proof, []byte{}); err == nil {
 				t.Error("Incorrectly verified invalid root/leaf")
 			}
-			if err := v.VerifyInclusionProof(p.index, p.size, proof, sha256EmptyTreeHash, []byte{}); err == nil {
+			if err := v.VerifyInclusion(p.index, p.size, []byte{}, proof, sha256EmptyTreeHash); err == nil {
 				t.Error("Incorrectly verified invalid root/leaf")
 			}
-			if err := v.VerifyInclusionProof(p.index, p.size, proof, sha256EmptyTreeHash, sha256SomeHash); err == nil {
+			if err := v.VerifyInclusion(p.index, p.size, sha256SomeHash, proof, sha256EmptyTreeHash); err == nil {
 				t.Error("Incorrectly verified invalid root/leaf")
 			}
 		})
@@ -316,14 +316,14 @@ func TestVerifyInclusionProof(t *testing.T) {
 		p := inclusionProofs[i]
 		t.Run(fmt.Sprintf("proof:%d", i), func(t *testing.T) {
 			leafHash := rfc6962.DefaultHasher.HashLeaf(leaves[p.leaf-1])
-			if err := verifierCheck(&v, p.leaf-1, p.snapshot, p.proof, roots[p.snapshot-1], leafHash); err != nil {
+			if err := verifierCheck(&v, p.leaf-1, p.size, p.proof, roots[p.size-1], leafHash); err != nil {
 				t.Errorf("verifierCheck(): %s", err)
 			}
 		})
 	}
 }
 
-func TestVerifyConsistencyProof(t *testing.T) {
+func TestVerifyConsistency(t *testing.T) {
 	v := NewLogVerifier(rfc6962.DefaultHasher)
 
 	root1 := []byte("don't care 1")
@@ -332,14 +332,14 @@ func TestVerifyConsistencyProof(t *testing.T) {
 	proof2 := [][]byte{sha256EmptyTreeHash}
 
 	tests := []struct {
-		snap1, snap2 int64
+		size1, size2 uint64
 		root1, root2 []byte
 		proof        [][]byte
 		wantErr      bool
 	}{
 		{0, 0, root1, root2, proof1, true},
 		{1, 1, root1, root2, proof1, true},
-		// Snapshots that are always consistent.
+		// Sizes that are always consistent.
 		{0, 0, root1, root1, proof1, false},
 		{0, 1, root1, root2, proof1, false},
 		{1, 1, root2, root2, proof1, false},
@@ -357,8 +357,8 @@ func TestVerifyConsistencyProof(t *testing.T) {
 		{1, 1, sha256EmptyTreeHash, sha256EmptyTreeHash, proof2, true},
 	}
 	for i, p := range tests {
-		t.Run(fmt.Sprintf("test:%d:snap:%d-%d", i, p.snap1, p.snap2), func(t *testing.T) {
-			err := verifierConsistencyCheck(&v, p.snap1, p.snap2, p.root1, p.root2, p.proof)
+		t.Run(fmt.Sprintf("test:%d:size:%d-%d", i, p.size1, p.size2), func(t *testing.T) {
+			err := verifierConsistencyCheck(&v, p.size1, p.size2, p.root1, p.root2, p.proof)
 			if p.wantErr && err == nil {
 				t.Errorf("Incorrectly verified")
 			} else if !p.wantErr && err != nil {
@@ -370,8 +370,8 @@ func TestVerifyConsistencyProof(t *testing.T) {
 	for i := 0; i < 4; i++ {
 		p := consistencyProofs[i]
 		t.Run(fmt.Sprintf("proof:%d", i), func(t *testing.T) {
-			err := verifierConsistencyCheck(&v, p.snapshot1, p.snapshot2,
-				roots[p.snapshot1-1], roots[p.snapshot2-1], p.proof)
+			err := verifierConsistencyCheck(&v, p.size1, p.size2,
+				roots[p.size1-1], roots[p.size2-1], p.proof)
 			if err != nil {
 				t.Fatalf("Failed to verify known good proof: %s", err)
 			}

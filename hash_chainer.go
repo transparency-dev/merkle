@@ -27,7 +27,7 @@ type hashChainer struct {
 // border. Assumes |proof| hashes are ordered from lower levels to upper, and
 // |seed| is the initial subtree/leaf hash on the path located at the specified
 // |index| on its level.
-func (c hashChainer) chainInner(seed []byte, proof [][]byte, index int64) []byte {
+func (c hashChainer) chainInner(seed []byte, proof [][]byte, index uint64) []byte {
 	for i, h := range proof {
 		if (index>>uint(i))&1 == 0 {
 			seed = c.hasher.HashChildren(seed, h)
@@ -41,7 +41,7 @@ func (c hashChainer) chainInner(seed []byte, proof [][]byte, index int64) []byte
 // chainInnerRight computes a subtree hash like chainInner, but only takes
 // hashes to the left from the path into consideration, which effectively means
 // the result is a hash of the corresponding earlier version of this subtree.
-func (c hashChainer) chainInnerRight(seed []byte, proof [][]byte, index int64) []byte {
+func (c hashChainer) chainInnerRight(seed []byte, proof [][]byte, index uint64) []byte {
 	for i, h := range proof {
 		if (index>>uint(i))&1 == 1 {
 			seed = c.hasher.HashChildren(h, seed)
