@@ -37,6 +37,21 @@ func NewNodeID(level uint, index uint64) NodeID {
 	return NodeID{Level: level, Index: index}
 }
 
+// Parent returns the ID of the parent node.
+func (id NodeID) Parent() NodeID {
+	return NewNodeID(id.Level+1, id.Index>>1)
+}
+
+// Sibling returns the ID of the sibling node.
+func (id NodeID) Sibling() NodeID {
+	return NewNodeID(id.Level, id.Index^1)
+}
+
+// Coverage returns the [begin, end) range of leaves covered by the node.
+func (id NodeID) Coverage() (uint64, uint64) {
+	return id.Index << id.Level, (id.Index + 1) << id.Level
+}
+
 // RangeNodes returns node IDs that comprise the [begin, end) compact range.
 func RangeNodes(begin, end uint64) []NodeID {
 	left, right := Decompose(begin, end)
