@@ -59,27 +59,31 @@ func Consistency(size1, size2 uint64) (Nodes, error) {
 		return Nodes{IDs: []compact.NodeID{}}, nil
 	}
 
-	// TODO(pavelkalinnikov): Make the capacity estimate accurate.
-	proof := make([]compact.NodeID, 0, bits.Len64(size2)+1)
-
-	// Find the biggest perfect subtree that ends at size1.
+	// Find the root of the biggest perfect subtree that ends at size1.
 	level := uint(bits.TrailingZeros64(size1))
 	index := (size1 - 1) >> level
-	// If it does not cover the whole size1 tree, add this node to the proof.
+	// The consistency proof consists of this node (except if size1 is a power of
+	// two, in which case adding this node would be redundant becase the client
+	// is assumed to know it from a checkpoint), and nodes of the inclusion proof
+	// into this node in the tree of size2.
+	p := nodes(index, level, size2)
+
+	// Handle the case when size1 is not a power of 2.
 	if index != 0 {
-		proof = append(proof, compact.NewNodeID(level, index))
+		// Prepend the earlier computed node to the proof.
+		// TODO(pavelkalinnikov): This code path is invoked almost always. Avoid
+		// the extra allocation that append does.
+		p.IDs = append(p.IDs, compact.NodeID{})
+		copy(p.IDs[1:], p.IDs)
+		p.IDs[0] = compact.NewNodeID(level, index)
+
+		// Fixup the indices into the IDs slice.
+		if p.begin < p.end {
+			p.begin++
+			p.end++
+		}
 	}
 
-	// Now append the path from this node to the root of size2.
-	p := nodes(index, level, size2)
-	p.IDs = append(proof, p.IDs...)
-	// Adjust for the case above when we already put one node in the proof. This
-	// happens when size1 is not a power of two, and the verifier needs to be
-	// able to re-create the root hash at size1.
-	if len(proof) == 1 && p.begin < p.end {
-		p.begin++
-		p.end++
-	}
 	return p, nil
 }
 
