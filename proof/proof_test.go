@@ -282,7 +282,7 @@ func TestEphem(t *testing.T) {
 		{index: 13, size: 14, want: id(1, 7)},
 
 		// There is only one node (level 0, index 1024) in the right subtree, but
-		// the ephemeral node is at level 10 rather then level 0. This is because
+		// the ephemeral node is at level 10 rather than level 0. This is because
 		// for the purposes of the proof this node is *effectively* at level 10.
 		{index: 123, size: 1025, want: id(10, 1)},
 
