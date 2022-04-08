@@ -88,10 +88,11 @@ func (r *Range) Hashes() [][]byte {
 }
 
 // Append extends the compact range by appending the passed in hash to it. It
-// uses the tree hasher to calculate hashes of newly created nodes, and reports
-// them through the visitor function (if non-nil).
+// reports all the added nodes through the visitor function (if non-nil).
 func (r *Range) Append(hash []byte, visitor VisitFn) error {
-	// TODO(pphaneuf): Consider calling `visitor` for this hash, for consistency.
+	if visitor != nil {
+		visitor(NewNodeID(0, r.end), hash)
+	}
 	return r.appendImpl(r.end+1, hash, nil, visitor)
 }
 
