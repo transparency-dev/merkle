@@ -176,7 +176,6 @@ func TestAppend(t *testing.T) {
 			cr := factory.NewEmptyRange(0)
 			tree.verifyRange(t, cr, true)
 			for i := uint64(0); i < size; i++ {
-				visit(NewNodeID(0, i), tree.leaf(i))
 				if err := cr.Append(tree.leaf(i), visit); err != nil {
 					t.Errorf("Append()=%v", err)
 				}
@@ -227,7 +226,6 @@ func TestMergeBackwards(t *testing.T) {
 	rng := factory.NewEmptyRange(numNodes)
 	tree.verifyRange(t, rng, true)
 	for i := numNodes; i > 0; i-- {
-		visit(NewNodeID(0, i-1), tree.leaf(i-1))
 		prepend := factory.NewEmptyRange(i - 1)
 		tree.verifyRange(t, prepend, true)
 		if err := prepend.Append(tree.leaf(i-1), visit); err != nil {
@@ -256,7 +254,6 @@ func TestMergeInBatches(t *testing.T) {
 		rng := factory.NewEmptyRange(i)
 		tree.verifyRange(t, rng, true)
 		for node := i; node < i+batch && node < numNodes; node++ {
-			visit(NewNodeID(0, node), tree.leaf(node))
 			if err := rng.Append(tree.leaf(node), visit); err != nil {
 				t.Fatalf("Append: %v", err)
 			}
@@ -289,7 +286,6 @@ func TestMergeRandomly(t *testing.T) {
 			mergeAll = func(begin, end uint64) *Range {
 				rng := factory.NewEmptyRange(begin)
 				if begin+1 == end {
-					visit(NewNodeID(0, begin), tree.leaf(begin))
 					if err := rng.Append(tree.leaf(begin), visit); err != nil {
 						t.Fatalf("Append(%d): %v", begin, err)
 					}
