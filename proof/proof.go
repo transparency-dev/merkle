@@ -67,7 +67,7 @@ func Consistency(size1, size2 uint64) (Nodes, error) {
 	level := uint(bits.TrailingZeros64(size1))
 	index := (size1 - 1) >> level
 	// The consistency proof consists of this node (except if size1 is a power of
-	// two, in which case adding this node would be redundant becase the client
+	// two, in which case adding this node would be redundant because the client
 	// is assumed to know it from a checkpoint), and nodes of the inclusion proof
 	// into this node in the tree of size2.
 	p := nodes(index, level, size2)
