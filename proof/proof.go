@@ -94,35 +94,48 @@ func Consistency(size1, size2 uint64) (Nodes, error) {
 // nodes returns the node IDs necessary to prove that the (level, index) node
 // is included in the Merkle tree of the given size.
 func nodes(index uint64, level uint, size uint64) Nodes {
-	node := compact.NewNodeID(level, index)
-	begin, _ := node.Coverage()
+	// Compute the `fork` node, where the path from root to (level, index) node
+	// diverges from the path to (0, size).
+	//
+	// The sibling of this node is the ephemeral node which represents a subtree
+	// that is not complete in the tree of the given size. To compute the hash
+	// of the ephemeral node, we need all the non-ephemeral nodes that cover the
+	// same range of leaves.
+	//
+	// The `inner` variable is how many layers up from (level, index) the `fork`
+	// and the ephemeral nodes are.
+	inner := bits.Len64(index^(size>>level)) - 1
+	fork := compact.NewNodeID(level+uint(inner), index>>inner)
 
-	// Compute the level at which the path to leaf `begin` diverges from the path
-	// to `size`. This is where the ephemeral node is located. The ephemeral node
-	// represents a subtree that is not complete in the tree of the given size,
-	// so we instead provide the minimal list of non-ephemeral nodes which cover
-	// the same range of leaves.
-	ephemLevel := uint(bits.Len64(begin^size) - 1)
+	begin, end := fork.Coverage()
+	left := compact.RangeSize(0, begin)
+	right := compact.RangeSize(end, size)
+
+	// Pre-allocate the exact number of nodes for the proof, in order:
+	// - The `inner` nodes at each level up to the fork node.
+	// - The `right` nodes, comprising the ephemeral node.
+	// - The `left` nodes, completing the coverage of the whole [0, size) range.
+	nodes := make([]compact.NodeID, 0, inner+right+left)
 
 	// The first portion of the proof consists of the siblings for nodes of the
 	// path going up to the level at which the ephemeral node appears.
-	// TODO(pavelkalinnikov): Pre-allocate the full capacity.
-	nodes := make([]compact.NodeID, 0, ephemLevel-level)
-	for ; node.Level < ephemLevel; node = node.Parent() {
+	node := compact.NewNodeID(level, index)
+	for ; node.Level < fork.Level; node = node.Parent() {
 		nodes = append(nodes, node.Sibling())
 	}
-	// This portion of the proof covers the range under the reached node. The
+	// This portion of the proof covers the range [begin, end) under it. The
 	// ranges to the left and to the right from it remain to be covered.
-	begin, end := node.Coverage()
 
 	// Add all the nodes (potentially none) that cover the right range, and
 	// represent the ephemeral node. Reverse them so that the Rehash method can
 	// process hashes in the convenient order, from lower to upper levels.
 	len1 := len(nodes)
-	nodes = append(nodes, reverse(compact.RangeNodes(end, size))...)
+	nodes = compact.RangeNodes(end, size, nodes)
+	reverse(nodes[len(nodes)-right:])
 	len2 := len(nodes)
 	// Add the nodes that cover the left range, ordered increasingly by level.
-	nodes = append(nodes, reverse(compact.RangeNodes(0, begin))...)
+	nodes = compact.RangeNodes(0, begin, nodes)
+	reverse(nodes[len(nodes)-left:])
 
 	// nodes[len1:len2] contains the nodes representing the ephemeral node. If
 	// it's empty or only has one node, make it zero.
@@ -173,9 +186,8 @@ func (n Nodes) Rehash(h [][]byte, hc func(left, right []byte) []byte) ([][]byte,
 	return h[:cursor], nil
 }
 
-func reverse(ids []compact.NodeID) []compact.NodeID {
+func reverse(ids []compact.NodeID) {
 	for i, j := 0, len(ids)-1; i < j; i, j = i+1, j-1 {
 		ids[i], ids[j] = ids[j], ids[i]
 	}
-	return ids
 }

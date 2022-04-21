@@ -21,7 +21,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestRangeNodes(t *testing.T) {
+func TestRangeNodesAndSize(t *testing.T) {
 	n := func(level uint, index uint64) NodeID {
 		return NewNodeID(level, index)
 	}
@@ -31,9 +31,9 @@ func TestRangeNodes(t *testing.T) {
 		want  []NodeID
 	}{
 		// Empty ranges.
-		{end: 0, want: []NodeID{}},
-		{begin: 10, end: 10, want: []NodeID{}},
-		{begin: 1024, end: 1024, want: []NodeID{}},
+		{end: 0, want: nil},
+		{begin: 10, end: 10, want: nil},
+		{begin: 1024, end: 1024, want: nil},
 		// One entry.
 		{begin: 10, end: 11, want: []NodeID{n(0, 10)}},
 		{begin: 1024, end: 1025, want: []NodeID{n(0, 1024)}},
@@ -67,9 +67,12 @@ func TestRangeNodes(t *testing.T) {
 		{begin: 1, end: 17, want: []NodeID{n(0, 1), n(1, 1), n(2, 1), n(3, 1), n(0, 16)}},
 	} {
 		t.Run(fmt.Sprintf("range:%d:%d", tc.begin, tc.end), func(t *testing.T) {
-			got := RangeNodes(tc.begin, tc.end)
+			got := RangeNodes(tc.begin, tc.end, nil)
 			if diff := cmp.Diff(got, tc.want); diff != "" {
 				t.Fatalf("RangeNodes: diff(-want +got):\n%s", diff)
+			}
+			if got, want := RangeSize(tc.begin, tc.end), len(tc.want); got != want {
+				t.Errorf("RangeSize: got %d, want %d", got, want)
 			}
 		})
 	}
@@ -79,7 +82,7 @@ func TestGenRangeNodes(t *testing.T) {
 	const size = uint64(512)
 	for begin := uint64(0); begin <= size; begin++ {
 		for end := begin; end <= size; end++ {
-			got := RangeNodes(begin, end)
+			got := RangeNodes(begin, end, nil)
 			want := refRangeNodes(NewNodeID(63, 0), begin, end)
 			if diff := cmp.Diff(got, want); diff != "" {
 				t.Fatalf("RangeNodes(%d, %d): diff(-want +got):\n%s", begin, end, diff)
@@ -89,11 +92,11 @@ func TestGenRangeNodes(t *testing.T) {
 }
 
 // refRangeNodes returns node IDs that comprise the [begin, end) compact range.
-// This is a reference implementation for cross-cthehecking.
+// This is a reference implementation for cross-checking.
 func refRangeNodes(root NodeID, begin, end uint64) []NodeID {
 	b, e := root.Coverage()
 	if end <= b || begin >= e {
-		return []NodeID{}
+		return nil
 	}
 	if b >= begin && e <= end {
 		return []NodeID{root}

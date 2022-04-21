@@ -56,10 +56,11 @@ func (id NodeID) Coverage() (uint64, uint64) {
 	return id.Index << id.Level, (id.Index + 1) << id.Level
 }
 
-// RangeNodes returns node IDs that comprise the [begin, end) compact range.
-func RangeNodes(begin, end uint64) []NodeID {
+// RangeNodes appends the IDs of the nodes that comprise the [begin, end)
+// compact range to the given slice, and returns the new slice. The caller may
+// pre-allocate space with the help of the RangeSize function.
+func RangeNodes(begin, end uint64, ids []NodeID) []NodeID {
 	left, right := Decompose(begin, end)
-	ids := make([]NodeID, 0, bits.OnesCount64(left)+bits.OnesCount64(right))
 
 	pos := begin
 	// Iterate over perfect subtrees along the left border of the range, ordered
@@ -79,4 +80,10 @@ func RangeNodes(begin, end uint64) []NodeID {
 	}
 
 	return ids
+}
+
+// RangeSize returns the number of nodes in the [begin, end) compact range.
+func RangeSize(begin, end uint64) int {
+	left, right := Decompose(begin, end)
+	return bits.OnesCount64(left) + bits.OnesCount64(right)
 }
