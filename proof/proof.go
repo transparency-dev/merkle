@@ -49,7 +49,7 @@ func Inclusion(index, size uint64) (Nodes, error) {
 	if index >= size {
 		return Nodes{}, fmt.Errorf("index %d out of bounds for tree size %d", index, size)
 	}
-	return nodes(index, 0, size), nil
+	return nodes(index, 0, size).skipFirst(), nil
 }
 
 // Consistency returns the information on how to fetch and construct a
@@ -72,22 +72,10 @@ func Consistency(size1, size2 uint64) (Nodes, error) {
 	// into this node in the tree of size2.
 	p := nodes(index, level, size2)
 
-	// Handle the case when size1 is not a power of 2.
-	if index != 0 {
-		// Prepend the earlier computed node to the proof.
-		// TODO(pavelkalinnikov): This code path is invoked almost always. Avoid
-		// the extra allocation that append does.
-		p.IDs = append(p.IDs, compact.NodeID{})
-		copy(p.IDs[1:], p.IDs)
-		p.IDs[0] = compact.NewNodeID(level, index)
-
-		// Fixup the indices into the IDs slice.
-		if p.begin < p.end {
-			p.begin++
-			p.end++
-		}
+	// Handle the case when size1 is a power of 2.
+	if index == 0 {
+		return p.skipFirst(), nil
 	}
-
 	return p, nil
 }
 
@@ -111,15 +99,16 @@ func nodes(index uint64, level uint, size uint64) Nodes {
 	left := compact.RangeSize(0, begin)
 	right := compact.RangeSize(end, size)
 
+	node := compact.NewNodeID(level, index)
 	// Pre-allocate the exact number of nodes for the proof, in order:
+	// - The seed node for which we are building the proof.
 	// - The `inner` nodes at each level up to the fork node.
 	// - The `right` nodes, comprising the ephemeral node.
 	// - The `left` nodes, completing the coverage of the whole [0, size) range.
-	nodes := make([]compact.NodeID, 0, inner+right+left)
+	nodes := append(make([]compact.NodeID, 0, 1+inner+right+left), node)
 
 	// The first portion of the proof consists of the siblings for nodes of the
 	// path going up to the level at which the ephemeral node appears.
-	node := compact.NewNodeID(level, index)
 	for ; node.Level < fork.Level; node = node.Parent() {
 		nodes = append(nodes, node.Sibling())
 	}
@@ -146,7 +135,7 @@ func nodes(index uint64, level uint, size uint64) Nodes {
 		len1, len2 = 0, 0
 	}
 
-	return Nodes{IDs: nodes, begin: len1, end: len2, ephem: node.Sibling()}
+	return Nodes{IDs: nodes, begin: len1, end: len2, ephem: fork.Sibling()}
 }
 
 // Ephem returns the ephemeral node, and indices begin and end, such that
@@ -184,6 +173,16 @@ func (n Nodes) Rehash(h [][]byte, hc func(left, right []byte) []byte) ([][]byte,
 		h[cursor] = hash
 	}
 	return h[:cursor], nil
+}
+
+func (n Nodes) skipFirst() Nodes {
+	n.IDs = n.IDs[1:]
+	// Fixup the indices into the IDs slice.
+	if n.begin < n.end {
+		n.begin--
+		n.end--
+	}
+	return n
 }
 
 func reverse(ids []compact.NodeID) {
