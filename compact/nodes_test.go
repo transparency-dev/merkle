@@ -16,8 +16,9 @@ package compact
 
 import (
 	"fmt"
-	"reflect"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestRangeNodes(t *testing.T) {
@@ -66,9 +67,38 @@ func TestRangeNodes(t *testing.T) {
 		{begin: 1, end: 17, want: []NodeID{n(0, 1), n(1, 1), n(2, 1), n(3, 1), n(0, 16)}},
 	} {
 		t.Run(fmt.Sprintf("range:%d:%d", tc.begin, tc.end), func(t *testing.T) {
-			if got, want := RangeNodes(tc.begin, tc.end), tc.want; !reflect.DeepEqual(got, tc.want) {
-				t.Fatalf("RangeNodes: got %v, want %v", got, want)
+			got := RangeNodes(tc.begin, tc.end)
+			if diff := cmp.Diff(got, tc.want); diff != "" {
+				t.Fatalf("RangeNodes: diff(-want +got):\n%s", diff)
 			}
 		})
 	}
+}
+
+func TestGenNodeRanges(t *testing.T) {
+	const size = uint64(512)
+	for begin := uint64(0); begin <= size; begin++ {
+		for end := begin; end <= size; end++ {
+			got := RangeNodes(begin, end)
+			want := refRangeNodes(NewNodeID(63, 0), begin, end)
+			if diff := cmp.Diff(got, want); diff != "" {
+				t.Fatalf("RangeNodes(%d, %d): diff(-want +got):\n%s", begin, end, diff)
+			}
+		}
+	}
+}
+
+// refRangeNodes returns node IDs that comprise the [begin, end) compact range.
+// This is a reference implementation for cross-cthehecking.
+func refRangeNodes(root NodeID, begin, end uint64) []NodeID {
+	b, e := root.Coverage()
+	if end <= b || begin >= e {
+		return []NodeID{}
+	}
+	if b >= begin && e <= end {
+		return []NodeID{root}
+	}
+	return append(
+		refRangeNodes(NewNodeID(root.Level-1, root.Index*2), begin, end),
+		refRangeNodes(NewNodeID(root.Level-1, root.Index*2+1), begin, end)...)
 }
