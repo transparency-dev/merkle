@@ -75,7 +75,7 @@ func RootFromInclusionProof(hasher merkle.LogHasher, index, size uint64, leafHas
 // VerifyConsistency checks that the passed-in consistency proof is valid
 // between the passed in tree sizes, with respect to the corresponding root
 // hashes. Requires 0 <= size1 <= size2.
-func VerifyConsistency(hasher merkle.LogHasher, size1, size2 uint64, root1, root2 []byte, proof [][]byte) error {
+func VerifyConsistency(hasher merkle.LogHasher, size1, size2 uint64, proof [][]byte, root1, root2 []byte) error {
 	switch {
 	case size2 < size1:
 		return fmt.Errorf("size2 (%d) < size1 (%d)", size1, size2)

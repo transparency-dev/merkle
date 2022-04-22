@@ -245,9 +245,9 @@ func verifierCheck(hasher merkle.LogHasher, leafIndex, treeSize uint64, proof []
 	return nil
 }
 
-func verifierConsistencyCheck(hasher merkle.LogHasher, size1, size2 uint64, root1, root2 []byte, proof [][]byte) error {
+func verifierConsistencyCheck(hasher merkle.LogHasher, size1, size2 uint64, proof [][]byte, root1, root2 []byte) error {
 	// Verify original consistency proof.
-	if err := VerifyConsistency(hasher, size1, size2, root1, root2, proof); err != nil {
+	if err := VerifyConsistency(hasher, size1, size2, proof, root1, root2); err != nil {
 		return err
 	}
 	// For simplicity test only non-trivial proofs that have root1 != root2,
@@ -259,7 +259,7 @@ func verifierConsistencyCheck(hasher merkle.LogHasher, size1, size2 uint64, root
 	probes := corruptConsistencyProof(size1, size2, root1, root2, proof)
 	var wrong []string
 	for _, p := range probes {
-		if err := VerifyConsistency(hasher, p.size1, p.size2, p.root1, p.root2, p.proof); err == nil {
+		if err := VerifyConsistency(hasher, p.size1, p.size2, p.proof, p.root1, p.root2); err == nil {
 			wrong = append(wrong, p.desc)
 		}
 	}
@@ -361,7 +361,7 @@ func TestVerifyConsistency(t *testing.T) {
 	}
 	for i, p := range tests {
 		t.Run(fmt.Sprintf("test:%d:size:%d-%d", i, p.size1, p.size2), func(t *testing.T) {
-			err := verifierConsistencyCheck(hasher, p.size1, p.size2, p.root1, p.root2, p.proof)
+			err := verifierConsistencyCheck(hasher, p.size1, p.size2, p.proof, p.root1, p.root2)
 			if p.wantErr && err == nil {
 				t.Errorf("Incorrectly verified")
 			} else if !p.wantErr && err != nil {
@@ -372,8 +372,8 @@ func TestVerifyConsistency(t *testing.T) {
 
 	for i, p := range consistencyProofs {
 		t.Run(fmt.Sprintf("proof:%d", i), func(t *testing.T) {
-			err := verifierConsistencyCheck(hasher, p.size1, p.size2,
-				roots[p.size1-1], roots[p.size2-1], p.proof)
+			err := verifierConsistencyCheck(hasher, p.size1, p.size2, p.proof,
+				roots[p.size1-1], roots[p.size2-1])
 			if err != nil {
 				t.Fatalf("Failed to verify known good proof: %s", err)
 			}
