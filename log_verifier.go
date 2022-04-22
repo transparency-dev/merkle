@@ -87,9 +87,8 @@ func (v LogVerifier) RootFromInclusionProof(index, size uint64, leafHash []byte,
 		return nil, fmt.Errorf("wrong proof size %d, want %d", got, want)
 	}
 
-	ch := hashChainer(v)
-	res := ch.chainInner(leafHash, proof[:inner], index)
-	res = ch.chainBorderRight(res, proof[inner:])
+	res := chainInner(v.hasher, leafHash, proof[:inner], index)
+	res = chainBorderRight(v.hasher, res, proof[inner:])
 	return res, nil
 }
 
@@ -137,17 +136,16 @@ func (v LogVerifier) VerifyConsistency(size1, size2 uint64, root1, root2 []byte,
 	// inclusion proof for entry |size1-1| in a tree of size |size2|.
 
 	// Verify the first root.
-	ch := hashChainer(v)
 	mask := (size1 - 1) >> uint(shift) // Start chaining from level |shift|.
-	hash1 := ch.chainInnerRight(seed, proof[:inner], mask)
-	hash1 = ch.chainBorderRight(hash1, proof[inner:])
+	hash1 := chainInnerRight(v.hasher, seed, proof[:inner], mask)
+	hash1 = chainBorderRight(v.hasher, hash1, proof[inner:])
 	if err := verifyMatch(hash1, root1); err != nil {
 		return err
 	}
 
 	// Verify the second root.
-	hash2 := ch.chainInner(seed, proof[:inner], mask)
-	hash2 = ch.chainBorderRight(hash2, proof[inner:])
+	hash2 := chainInner(v.hasher, seed, proof[:inner], mask)
+	hash2 = chainBorderRight(v.hasher, hash2, proof[inner:])
 	return verifyMatch(hash2, root2)
 }
 
@@ -164,4 +162,40 @@ func decompInclProof(index, size uint64) (int, int) {
 
 func innerProofSize(index, size uint64) int {
 	return bits.Len64(index ^ (size - 1))
+}
+
+// chainInner computes a subtree hash for a node on or below the tree's right
+// border. Assumes |proof| hashes are ordered from lower levels to upper, and
+// |seed| is the initial subtree/leaf hash on the path located at the specified
+// |index| on its level.
+func chainInner(hasher LogHasher, seed []byte, proof [][]byte, index uint64) []byte {
+	for i, h := range proof {
+		if (index>>uint(i))&1 == 0 {
+			seed = hasher.HashChildren(seed, h)
+		} else {
+			seed = hasher.HashChildren(h, seed)
+		}
+	}
+	return seed
+}
+
+// chainInnerRight computes a subtree hash like chainInner, but only takes
+// hashes to the left from the path into consideration, which effectively means
+// the result is a hash of the corresponding earlier version of this subtree.
+func chainInnerRight(hasher LogHasher, seed []byte, proof [][]byte, index uint64) []byte {
+	for i, h := range proof {
+		if (index>>uint(i))&1 == 1 {
+			seed = hasher.HashChildren(h, seed)
+		}
+	}
+	return seed
+}
+
+// chainBorderRight chains proof hashes along tree borders. This differs from
+// inner chaining because |proof| contains only left-side subtree hashes.
+func chainBorderRight(hasher LogHasher, seed []byte, proof [][]byte) []byte {
+	for _, h := range proof {
+		seed = hasher.HashChildren(h, seed)
+	}
+	return seed
 }
