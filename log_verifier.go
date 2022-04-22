@@ -100,15 +100,10 @@ func (v LogVerifier) VerifyConsistency(size1, size2 uint64, root1, root2 []byte,
 	case size2 < size1:
 		return fmt.Errorf("size2 (%d) < size1 (%d)", size1, size2)
 	case size1 == size2:
-		if !bytes.Equal(root1, root2) {
-			return RootMismatchError{
-				CalculatedRoot: root1,
-				ExpectedRoot:   root2,
-			}
-		} else if len(proof) > 0 {
-			return errors.New("root1 and root2 match, but proof is non-empty")
+		if len(proof) > 0 {
+			return errors.New("size1=size2, but proof is not empty")
 		}
-		return nil // Proof OK.
+		return verifyMatch(root1, root2)
 	case size1 == 0:
 		// Any size greater than 0 is consistent with size 0.
 		if len(proof) > 0 {
