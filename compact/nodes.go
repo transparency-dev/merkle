@@ -18,15 +18,19 @@ import "math/bits"
 
 // NodeID identifies a node of a Merkle tree.
 //
-// The level is the longest distance from the node down to the leaves, and
-// index is its horizontal position in this level ordered from left to right.
-// Consider an example below where nodes are labeled as [<level> <index>].
+// The ID consists of a level and index within this level. Levels are numbered
+// from 0, which corresponds to the tree leaves. Within each level, nodes are
+// numbered with consecutive indices starting from 0.
 //
-//           [2 0]
-//          /     \
-//       [1 0]     \
-//       /   \      \
-//   [0 0]  [0 1]  [0 2]
+//  L4:         ┌───────0───────┐                ...
+//  L3:     ┌───0───┐       ┌───1───┐       ┌─── ...
+//  L2:   ┌─0─┐   ┌─1─┐   ┌─2─┐   ┌─3─┐   ┌─4─┐  ...
+//  L1:  ┌0┐ ┌1┐ ┌2┐ ┌3┐ ┌4┐ ┌5┐ ┌6┐ ┌7┐ ┌8┐ ┌9┐ ...
+//  L0:  0 1 2 3 4 5 6 7 8 9 ... ... ... ... ... ...
+//
+// When the tree is not perfect, the nodes that would complement it to perfect
+// are called ephemeral. Algorithms that operate with ephemeral nodes still map
+// them to the same address space.
 type NodeID struct {
 	Level uint
 	Index uint64
