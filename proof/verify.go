@@ -12,13 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package merkle
+package proof
 
 import (
 	"bytes"
 	"errors"
 	"fmt"
 	"math/bits"
+
+	"github.com/transparency-dev/merkle"
 )
 
 // RootMismatchError occurs when an inclusion proof fails.
@@ -38,25 +40,13 @@ func verifyMatch(calculated, expected []byte) error {
 	return nil
 }
 
-// LogHasher provides the hash functions needed to compute dense merkle trees.
-type LogHasher interface {
-	// EmptyRoot supports returning a special case for the root of an empty tree.
-	EmptyRoot() []byte
-	// HashLeaf computes the hash of a leaf that exists.
-	HashLeaf(leaf []byte) []byte
-	// HashChildren computes interior nodes.
-	HashChildren(l, r []byte) []byte
-	// Size returns the number of bytes the Hash* functions will return.
-	Size() int
-}
-
 // LogVerifier verifies inclusion and consistency proofs for append only logs.
 type LogVerifier struct {
-	hasher LogHasher
+	hasher merkle.LogHasher
 }
 
 // NewLogVerifier returns a new LogVerifier for a tree.
-func NewLogVerifier(hasher LogHasher) LogVerifier {
+func NewLogVerifier(hasher merkle.LogHasher) LogVerifier {
 	return LogVerifier{hasher}
 }
 
@@ -163,7 +153,7 @@ func innerProofSize(index, size uint64) int {
 // border. Assumes |proof| hashes are ordered from lower levels to upper, and
 // |seed| is the initial subtree/leaf hash on the path located at the specified
 // |index| on its level.
-func chainInner(hasher LogHasher, seed []byte, proof [][]byte, index uint64) []byte {
+func chainInner(hasher merkle.LogHasher, seed []byte, proof [][]byte, index uint64) []byte {
 	for i, h := range proof {
 		if (index>>uint(i))&1 == 0 {
 			seed = hasher.HashChildren(seed, h)
@@ -177,7 +167,7 @@ func chainInner(hasher LogHasher, seed []byte, proof [][]byte, index uint64) []b
 // chainInnerRight computes a subtree hash like chainInner, but only takes
 // hashes to the left from the path into consideration, which effectively means
 // the result is a hash of the corresponding earlier version of this subtree.
-func chainInnerRight(hasher LogHasher, seed []byte, proof [][]byte, index uint64) []byte {
+func chainInnerRight(hasher merkle.LogHasher, seed []byte, proof [][]byte, index uint64) []byte {
 	for i, h := range proof {
 		if (index>>uint(i))&1 == 1 {
 			seed = hasher.HashChildren(h, seed)
@@ -188,7 +178,7 @@ func chainInnerRight(hasher LogHasher, seed []byte, proof [][]byte, index uint64
 
 // chainBorderRight chains proof hashes along tree borders. This differs from
 // inner chaining because |proof| contains only left-side subtree hashes.
-func chainBorderRight(hasher LogHasher, seed []byte, proof [][]byte) []byte {
+func chainBorderRight(hasher merkle.LogHasher, seed []byte, proof [][]byte) []byte {
 	for _, h := range proof {
 		seed = hasher.HashChildren(h, seed)
 	}
