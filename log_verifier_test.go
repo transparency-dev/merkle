@@ -79,6 +79,11 @@ var (
 			dh("5f083f0a1a33ca076a95279832580db3e0ef4584bdff1f54c8a360f50de3031e", 32),
 			dh("bc1a0643b12e4d2d7c77918f44e0f4f79a838b6cf9ec5b5c283e1f4d88599e6b", 32),
 		}},
+		{6, 7, [][]byte{
+			dh("0ebc5d3437fbe2db158b9f126a1d118e308181031d0a949f8dededebc558ef6a", 32),
+			dh("b08693ec2e721597130641e8211e7eedccb4c26413963eee6c1e2ed16ffb1a5f", 32),
+			dh("d37ee418976dd95753c1c73862b9398fa2a2cf9b4ff0fdfe8b30cd95209614b7", 32),
+		}},
 	}
 
 	roots = [][]byte{
@@ -367,8 +372,7 @@ func TestVerifyConsistency(t *testing.T) {
 		})
 	}
 
-	for i := 0; i < 4; i++ {
-		p := consistencyProofs[i]
+	for i, p := range consistencyProofs {
 		t.Run(fmt.Sprintf("proof:%d", i), func(t *testing.T) {
 			err := verifierConsistencyCheck(&v, p.size1, p.size2,
 				roots[p.size1-1], roots[p.size2-1], p.proof)
