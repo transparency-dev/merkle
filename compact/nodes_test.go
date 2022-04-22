@@ -78,6 +78,19 @@ func TestRangeNodesAndSize(t *testing.T) {
 	}
 }
 
+func TestRangeNodesAppend(t *testing.T) {
+	prefix := []NodeID{NewNodeID(0, 0), NewNodeID(10, 0), NewNodeID(11, 5)}
+	nodes := RangeNodes(123, 456, prefix)
+
+	if got, min := len(nodes), len(prefix); got < min {
+		t.Fatalf("RangeNodes returned %d IDs, want >= %d", got, min)
+	}
+	got := nodes[:len(prefix)]
+	if diff := cmp.Diff(got, prefix); diff != "" {
+		t.Fatalf("RangeNodes: diff(-prefix +got):\n%s", diff)
+	}
+}
+
 func TestGenRangeNodes(t *testing.T) {
 	const size = uint64(512)
 	for begin := uint64(0); begin <= size; begin++ {
