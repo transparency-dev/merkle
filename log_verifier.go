@@ -31,6 +31,13 @@ func (e RootMismatchError) Error() string {
 	return fmt.Sprintf("calculated root:\n%v\n does not match expected root:\n%v", e.CalculatedRoot, e.ExpectedRoot)
 }
 
+func verifyMatch(calculated, expected []byte) error {
+	if !bytes.Equal(calculated, expected) {
+		return RootMismatchError{ExpectedRoot: expected, CalculatedRoot: calculated}
+	}
+	return nil
+}
+
 // LogHasher provides the hash functions needed to compute dense merkle trees.
 type LogHasher interface {
 	// EmptyRoot supports returning a special case for the root of an empty tree.
@@ -61,13 +68,7 @@ func (v LogVerifier) VerifyInclusion(index, size uint64, leafHash []byte, proof 
 	if err != nil {
 		return err
 	}
-	if !bytes.Equal(calcRoot, root) {
-		return RootMismatchError{
-			CalculatedRoot: calcRoot,
-			ExpectedRoot:   root,
-		}
-	}
-	return nil
+	return verifyMatch(calcRoot, root)
 }
 
 // RootFromInclusionProof calculates the expected root hash for a tree of the
@@ -140,24 +141,14 @@ func (v LogVerifier) VerifyConsistency(size1, size2 uint64, root1, root2 []byte,
 	mask := (size1 - 1) >> uint(shift) // Start chaining from level |shift|.
 	hash1 := ch.chainInnerRight(seed, proof[:inner], mask)
 	hash1 = ch.chainBorderRight(hash1, proof[inner:])
-	if !bytes.Equal(hash1, root1) {
-		return RootMismatchError{
-			CalculatedRoot: hash1,
-			ExpectedRoot:   root1,
-		}
+	if err := verifyMatch(hash1, root1); err != nil {
+		return err
 	}
 
 	// Verify the second root.
 	hash2 := ch.chainInner(seed, proof[:inner], mask)
 	hash2 = ch.chainBorderRight(hash2, proof[inner:])
-	if !bytes.Equal(hash2, root2) {
-		return RootMismatchError{
-			CalculatedRoot: hash2,
-			ExpectedRoot:   root2,
-		}
-	}
-
-	return nil // Proof OK.
+	return verifyMatch(hash2, root2)
 }
 
 // decompInclProof breaks down inclusion proof for a leaf at the specified
