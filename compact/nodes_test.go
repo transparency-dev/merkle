@@ -75,7 +75,7 @@ func TestRangeNodes(t *testing.T) {
 	}
 }
 
-func TestGenNodeRanges(t *testing.T) {
+func TestGenRangeNodes(t *testing.T) {
 	const size = uint64(512)
 	for begin := uint64(0); begin <= size; begin++ {
 		for end := begin; end <= size; end++ {
