@@ -21,6 +21,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/transparency-dev/merkle"
 	"github.com/transparency-dev/merkle/rfc6962"
 )
 
@@ -37,6 +38,7 @@ type consistencyTestVector struct {
 }
 
 var (
+	hasher              = rfc6962.DefaultHasher
 	sha256SomeHash      = dh("abacaba000000000000000000000000000000000000000000060061e00123456", 32)
 	sha256EmptyTreeHash = dh("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", 32)
 
@@ -217,23 +219,23 @@ func corruptConsistencyProof(size1, size2 uint64, root1, root2 []byte, proof [][
 	return ret
 }
 
-func verifierCheck(v *LogVerifier, leafIndex, treeSize uint64, proof [][]byte, root, leafHash []byte) error {
+func verifierCheck(hasher merkle.LogHasher, leafIndex, treeSize uint64, proof [][]byte, root, leafHash []byte) error {
 	// Verify original inclusion proof.
-	got, err := v.RootFromInclusionProof(leafIndex, treeSize, leafHash, proof)
+	got, err := RootFromInclusionProof(hasher, leafIndex, treeSize, leafHash, proof)
 	if err != nil {
 		return err
 	}
 	if !bytes.Equal(got, root) {
 		return fmt.Errorf("got root:\n%x\nexpected:\n%x", got, root)
 	}
-	if err := v.VerifyInclusion(leafIndex, treeSize, leafHash, proof, root); err != nil {
+	if err := VerifyInclusion(hasher, leafIndex, treeSize, leafHash, proof, root); err != nil {
 		return err
 	}
 
 	probes := corruptInclusionProof(leafIndex, treeSize, proof, root, leafHash)
 	var wrong []string
 	for _, p := range probes {
-		if err := v.VerifyInclusion(p.leafIndex, p.treeSize, p.leafHash, p.proof, p.root); err == nil {
+		if err := VerifyInclusion(hasher, p.leafIndex, p.treeSize, p.leafHash, p.proof, p.root); err == nil {
 			wrong = append(wrong, p.desc)
 		}
 	}
@@ -243,9 +245,9 @@ func verifierCheck(v *LogVerifier, leafIndex, treeSize uint64, proof [][]byte, r
 	return nil
 }
 
-func verifierConsistencyCheck(v *LogVerifier, size1, size2 uint64, root1, root2 []byte, proof [][]byte) error {
+func verifierConsistencyCheck(hasher merkle.LogHasher, size1, size2 uint64, root1, root2 []byte, proof [][]byte) error {
 	// Verify original consistency proof.
-	if err := v.VerifyConsistency(size1, size2, root1, root2, proof); err != nil {
+	if err := VerifyConsistency(hasher, size1, size2, root1, root2, proof); err != nil {
 		return err
 	}
 	// For simplicity test only non-trivial proofs that have root1 != root2,
@@ -257,7 +259,7 @@ func verifierConsistencyCheck(v *LogVerifier, size1, size2 uint64, root1, root2 
 	probes := corruptConsistencyProof(size1, size2, root1, root2, proof)
 	var wrong []string
 	for _, p := range probes {
-		if err := v.VerifyConsistency(p.size1, p.size2, p.root1, p.root2, p.proof); err == nil {
+		if err := VerifyConsistency(hasher, p.size1, p.size2, p.root1, p.root2, p.proof); err == nil {
 			wrong = append(wrong, p.desc)
 		}
 	}
@@ -268,10 +270,9 @@ func verifierConsistencyCheck(v *LogVerifier, size1, size2 uint64, root1, root2 
 }
 
 func TestVerifyInclusionSingleEntry(t *testing.T) {
-	v := NewLogVerifier(rfc6962.DefaultHasher)
 	data := []byte("data")
 	// Root and leaf hash for 1-entry tree are the same.
-	hash := v.hasher.HashLeaf(data)
+	hash := hasher.HashLeaf(data)
 	// The corresponding inclusion proof is empty.
 	proof := [][]byte{}
 	emptyHash := []byte{}
@@ -287,7 +288,7 @@ func TestVerifyInclusionSingleEntry(t *testing.T) {
 		{emptyHash, emptyHash, true}, // Wrong hash size.
 	} {
 		t.Run(fmt.Sprintf("test:%d", i), func(t *testing.T) {
-			err := v.VerifyInclusion(0, 1, tc.leaf, proof, tc.root)
+			err := VerifyInclusion(hasher, 0, 1, tc.leaf, proof, tc.root)
 			if got, want := err != nil, tc.wantErr; got != want {
 				t.Errorf("error: %v, want %v", got, want)
 			}
@@ -296,7 +297,6 @@ func TestVerifyInclusionSingleEntry(t *testing.T) {
 }
 
 func TestVerifyInclusion(t *testing.T) {
-	v := NewLogVerifier(rfc6962.DefaultHasher)
 	proof := [][]byte{}
 
 	probes := []struct {
@@ -304,13 +304,13 @@ func TestVerifyInclusion(t *testing.T) {
 	}{{0, 0}, {0, 1}, {1, 0}, {2, 1}}
 	for _, p := range probes {
 		t.Run(fmt.Sprintf("probe:%d:%d", p.index, p.size), func(t *testing.T) {
-			if err := v.VerifyInclusion(p.index, p.size, sha256SomeHash, proof, []byte{}); err == nil {
+			if err := VerifyInclusion(hasher, p.index, p.size, sha256SomeHash, proof, []byte{}); err == nil {
 				t.Error("Incorrectly verified invalid root/leaf")
 			}
-			if err := v.VerifyInclusion(p.index, p.size, []byte{}, proof, sha256EmptyTreeHash); err == nil {
+			if err := VerifyInclusion(hasher, p.index, p.size, []byte{}, proof, sha256EmptyTreeHash); err == nil {
 				t.Error("Incorrectly verified invalid root/leaf")
 			}
-			if err := v.VerifyInclusion(p.index, p.size, sha256SomeHash, proof, sha256EmptyTreeHash); err == nil {
+			if err := VerifyInclusion(hasher, p.index, p.size, sha256SomeHash, proof, sha256EmptyTreeHash); err == nil {
 				t.Error("Incorrectly verified invalid root/leaf")
 			}
 		})
@@ -321,7 +321,7 @@ func TestVerifyInclusion(t *testing.T) {
 		p := inclusionProofs[i]
 		t.Run(fmt.Sprintf("proof:%d", i), func(t *testing.T) {
 			leafHash := rfc6962.DefaultHasher.HashLeaf(leaves[p.leaf-1])
-			if err := verifierCheck(&v, p.leaf-1, p.size, p.proof, roots[p.size-1], leafHash); err != nil {
+			if err := verifierCheck(hasher, p.leaf-1, p.size, p.proof, roots[p.size-1], leafHash); err != nil {
 				t.Errorf("verifierCheck(): %s", err)
 			}
 		})
@@ -329,8 +329,6 @@ func TestVerifyInclusion(t *testing.T) {
 }
 
 func TestVerifyConsistency(t *testing.T) {
-	v := NewLogVerifier(rfc6962.DefaultHasher)
-
 	root1 := []byte("don't care 1")
 	root2 := []byte("don't care 2")
 	proof1 := [][]byte{}
@@ -363,7 +361,7 @@ func TestVerifyConsistency(t *testing.T) {
 	}
 	for i, p := range tests {
 		t.Run(fmt.Sprintf("test:%d:size:%d-%d", i, p.size1, p.size2), func(t *testing.T) {
-			err := verifierConsistencyCheck(&v, p.size1, p.size2, p.root1, p.root2, p.proof)
+			err := verifierConsistencyCheck(hasher, p.size1, p.size2, p.root1, p.root2, p.proof)
 			if p.wantErr && err == nil {
 				t.Errorf("Incorrectly verified")
 			} else if !p.wantErr && err != nil {
@@ -374,7 +372,7 @@ func TestVerifyConsistency(t *testing.T) {
 
 	for i, p := range consistencyProofs {
 		t.Run(fmt.Sprintf("proof:%d", i), func(t *testing.T) {
-			err := verifierConsistencyCheck(&v, p.size1, p.size2,
+			err := verifierConsistencyCheck(hasher, p.size1, p.size2,
 				roots[p.size1-1], roots[p.size2-1], p.proof)
 			if err != nil {
 				t.Fatalf("Failed to verify known good proof: %s", err)

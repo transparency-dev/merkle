@@ -40,21 +40,11 @@ func verifyMatch(calculated, expected []byte) error {
 	return nil
 }
 
-// LogVerifier verifies inclusion and consistency proofs for append only logs.
-type LogVerifier struct {
-	hasher merkle.LogHasher
-}
-
-// NewLogVerifier returns a new LogVerifier for a tree.
-func NewLogVerifier(hasher merkle.LogHasher) LogVerifier {
-	return LogVerifier{hasher}
-}
-
 // VerifyInclusion verifies the correctness of the inclusion proof for the leaf
 // with the specified hash and index, relatively to the tree of the given size
 // and root hash. Requires 0 <= index < size.
-func (v LogVerifier) VerifyInclusion(index, size uint64, leafHash []byte, proof [][]byte, root []byte) error {
-	calcRoot, err := v.RootFromInclusionProof(index, size, leafHash, proof)
+func VerifyInclusion(hasher merkle.LogHasher, index, size uint64, leafHash []byte, proof [][]byte, root []byte) error {
+	calcRoot, err := RootFromInclusionProof(hasher, index, size, leafHash, proof)
 	if err != nil {
 		return err
 	}
@@ -64,11 +54,11 @@ func (v LogVerifier) VerifyInclusion(index, size uint64, leafHash []byte, proof 
 // RootFromInclusionProof calculates the expected root hash for a tree of the
 // given size, provided a leaf index and hash with the corresponding inclusion
 // proof. Requires 0 <= index < size.
-func (v LogVerifier) RootFromInclusionProof(index, size uint64, leafHash []byte, proof [][]byte) ([]byte, error) {
+func RootFromInclusionProof(hasher merkle.LogHasher, index, size uint64, leafHash []byte, proof [][]byte) ([]byte, error) {
 	if index >= size {
 		return nil, fmt.Errorf("index is beyond size: %d >= %d", index, size)
 	}
-	if got, want := len(leafHash), v.hasher.Size(); got != want {
+	if got, want := len(leafHash), hasher.Size(); got != want {
 		return nil, fmt.Errorf("leafHash has unexpected size %d, want %d", got, want)
 	}
 
@@ -77,15 +67,15 @@ func (v LogVerifier) RootFromInclusionProof(index, size uint64, leafHash []byte,
 		return nil, fmt.Errorf("wrong proof size %d, want %d", got, want)
 	}
 
-	res := chainInner(v.hasher, leafHash, proof[:inner], index)
-	res = chainBorderRight(v.hasher, res, proof[inner:])
+	res := chainInner(hasher, leafHash, proof[:inner], index)
+	res = chainBorderRight(hasher, res, proof[inner:])
 	return res, nil
 }
 
 // VerifyConsistency checks that the passed-in consistency proof is valid
 // between the passed in tree sizes, with respect to the corresponding root
 // hashes. Requires 0 <= size1 <= size2.
-func (v LogVerifier) VerifyConsistency(size1, size2 uint64, root1, root2 []byte, proof [][]byte) error {
+func VerifyConsistency(hasher merkle.LogHasher, size1, size2 uint64, root1, root2 []byte, proof [][]byte) error {
 	switch {
 	case size2 < size1:
 		return fmt.Errorf("size2 (%d) < size1 (%d)", size1, size2)
@@ -122,15 +112,15 @@ func (v LogVerifier) VerifyConsistency(size1, size2 uint64, root1, root2 []byte,
 
 	// Verify the first root.
 	mask := (size1 - 1) >> uint(shift) // Start chaining from level |shift|.
-	hash1 := chainInnerRight(v.hasher, seed, proof[:inner], mask)
-	hash1 = chainBorderRight(v.hasher, hash1, proof[inner:])
+	hash1 := chainInnerRight(hasher, seed, proof[:inner], mask)
+	hash1 = chainBorderRight(hasher, hash1, proof[inner:])
 	if err := verifyMatch(hash1, root1); err != nil {
 		return err
 	}
 
 	// Verify the second root.
-	hash2 := chainInner(v.hasher, seed, proof[:inner], mask)
-	hash2 = chainBorderRight(v.hasher, hash2, proof[inner:])
+	hash2 := chainInner(hasher, seed, proof[:inner], mask)
+	hash2 = chainBorderRight(hasher, hash2, proof[inner:])
 	return verifyMatch(hash2, root2)
 }
 
