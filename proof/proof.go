@@ -127,11 +127,10 @@ func nodes(index uint64, level uint, size uint64) Nodes {
 	reverse(nodes[len(nodes)-left:])
 
 	// nodes[len1:len2] contains the nodes representing the ephemeral node. If
-	// it's empty or only has one node, make it zero.
-	//
-	// TODO(pavelkalinnikov): Don't empty the single node case. It is still a
-	// valuable info to expose.
-	if len1+1 >= len2 {
+	// it's empty, make it zero. Note that it can also contain a single node.
+	// Depending on the preference of the layer above, it may or may not be
+	// considered ephemeral.
+	if len1 >= len2 {
 		len1, len2 = 0, 0
 	}
 

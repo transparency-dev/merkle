@@ -67,9 +67,9 @@ func TestInclusion(t *testing.T) {
 
 		// Small trees.
 		{size: 1, index: 0, want: Nodes{IDs: []compact.NodeID{}}},
-		{size: 2, index: 0, want: nodes(id(0, 1))},           // b
-		{size: 2, index: 1, want: nodes(id(0, 0))},           // a
-		{size: 3, index: 1, want: nodes(id(0, 0), id(0, 2))}, // a c
+		{size: 2, index: 0, want: nodes(id(0, 1))},                  // b
+		{size: 2, index: 1, want: nodes(id(0, 0))},                  // a
+		{size: 3, index: 1, want: rehash(1, 2, id(0, 0), id(0, 2))}, // a c
 
 		// Tree of size 7.
 		{size: 7, index: 0, want: rehash(2, 4, // l=hash(i,j)
@@ -80,15 +80,15 @@ func TestInclusion(t *testing.T) {
 			id(0, 3), id(1, 0), id(0, 6), id(1, 2))}, // d g j i
 		{size: 7, index: 3, want: rehash(2, 4, // l=hash(i,j)
 			id(0, 2), id(1, 0), id(0, 6), id(1, 2))}, // c g j i
-		{size: 7, index: 4, want: nodes(id(0, 5), id(0, 6), id(2, 0))}, // f j k
-		{size: 7, index: 5, want: nodes(id(0, 4), id(0, 6), id(2, 0))}, // e j k
-		{size: 7, index: 6, want: nodes(id(1, 2), id(2, 0))},           // i k
+		{size: 7, index: 4, want: rehash(1, 2, id(0, 5), id(0, 6), id(2, 0))}, // f j k
+		{size: 7, index: 5, want: rehash(1, 2, id(0, 4), id(0, 6), id(2, 0))}, // e j k
+		{size: 7, index: 6, want: nodes(id(1, 2), id(2, 0))},                  // i k
 
 		// Smaller trees within a bigger stored tree.
-		{size: 4, index: 2, want: nodes(id(0, 3), id(1, 0))},           // d g
-		{size: 5, index: 3, want: nodes(id(0, 2), id(1, 0), id(0, 4))}, // c g e
-		{size: 6, index: 3, want: nodes(id(0, 2), id(1, 0), id(1, 2))}, // c g i
-		{size: 6, index: 4, want: nodes(id(0, 5), id(2, 0))},           // f k
+		{size: 4, index: 2, want: nodes(id(0, 3), id(1, 0))},                  // d g
+		{size: 5, index: 3, want: rehash(2, 3, id(0, 2), id(1, 0), id(0, 4))}, // c g e
+		{size: 6, index: 3, want: rehash(2, 3, id(0, 2), id(1, 0), id(1, 2))}, // c g i
+		{size: 6, index: 4, want: nodes(id(0, 5), id(2, 0))},                  // f k
 		{size: 7, index: 1, want: rehash(2, 4, // l=hash(i,j)
 			id(0, 0), id(1, 1), id(0, 6), id(1, 2))}, // a h j i
 		{size: 7, index: 3, want: rehash(2, 4, // l=hash(i,j)
@@ -169,18 +169,18 @@ func TestConsistency(t *testing.T) {
 		{size1: 5, size2: 0, wantErr: true},
 		{size1: 9, size2: 8, wantErr: true},
 
-		{size1: 1, size2: 2, want: nodes(id(0, 1))},                     // b
-		{size1: 1, size2: 4, want: nodes(id(0, 1), id(1, 1))},           // b h
-		{size1: 1, size2: 6, want: nodes(id(0, 1), id(1, 1), id(1, 2))}, // b h i
-		{size1: 2, size2: 3, want: nodes(id(0, 2))},                     // c
-		{size1: 2, size2: 8, want: nodes(id(1, 1), id(2, 1))},           // h l
+		{size1: 1, size2: 2, want: nodes(id(0, 1))},                            // b
+		{size1: 1, size2: 4, want: nodes(id(0, 1), id(1, 1))},                  // b h
+		{size1: 1, size2: 6, want: rehash(2, 3, id(0, 1), id(1, 1), id(1, 2))}, // b h i
+		{size1: 2, size2: 3, want: rehash(0, 1, id(0, 2))},                     // c
+		{size1: 2, size2: 8, want: nodes(id(1, 1), id(2, 1))},                  // h l
 		{size1: 3, size2: 7, want: rehash(3, 5, // l=hash(i,j)
 			id(0, 2), id(0, 3), id(1, 0), id(0, 6), id(1, 2))}, // c d g j i
 		{size1: 4, size2: 7, want: rehash(0, 2, // l=hash(i,j)
 			id(0, 6), id(1, 2))}, // j i
-		{size1: 5, size2: 7, want: nodes(
+		{size1: 5, size2: 7, want: rehash(2, 3,
 			id(0, 4), id(0, 5), id(0, 6), id(2, 0))}, // e f j k
-		{size1: 6, size2: 7, want: nodes(
+		{size1: 6, size2: 7, want: rehash(1, 2,
 			id(1, 2), id(0, 6), id(2, 0))}, // i j k
 		{size1: 7, size2: 8, want: nodes(
 			id(0, 6), id(0, 7), id(1, 2), id(2, 0))}, // j leaf#7 i k
@@ -196,11 +196,11 @@ func TestConsistency(t *testing.T) {
 
 		// Smaller trees within a bigger stored tree.
 		{size1: 2, size2: 4, want: nodes(id(1, 1))}, // h
-		{size1: 3, size2: 5, want: nodes(
+		{size1: 3, size2: 5, want: rehash(3, 4,
 			id(0, 2), id(0, 3), id(1, 0), id(0, 4))}, // c d g e
-		{size1: 3, size2: 6, want: nodes(
+		{size1: 3, size2: 6, want: rehash(3, 4,
 			id(0, 2), id(0, 3), id(1, 0), id(1, 2))}, // c d g i
-		{size1: 4, size2: 6, want: nodes(id(1, 2))}, // i
+		{size1: 4, size2: 6, want: rehash(0, 1, id(1, 2))}, // i
 		{size1: 1, size2: 7, want: rehash(2, 4, // l=hash(i,j)
 			id(0, 1), id(1, 1), id(0, 6), id(1, 2))}, // b h j i
 
