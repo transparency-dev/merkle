@@ -18,14 +18,6 @@ package testonly
 
 import "encoding/hex"
 
-func hd(b string) []byte {
-	r, err := hex.DecodeString(b)
-	if err != nil {
-		panic(err)
-	}
-	return r
-}
-
 // LeafInputs returns a slice of leaf inputs for testing Merkle trees.
 func LeafInputs() [][]byte {
 	return [][]byte{
@@ -106,4 +98,13 @@ func CompactTrees() [][][]byte {
 // SHA256-based strategy from RFC 6962.
 func EmptyRootHash() []byte {
 	return hd("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
+}
+
+// hd decodes a hex string or panics.
+func hd(b string) []byte {
+	r, err := hex.DecodeString(b)
+	if err != nil {
+		panic(err)
+	}
+	return r
 }

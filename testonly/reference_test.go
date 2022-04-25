@@ -15,7 +15,6 @@
 package testonly
 
 import (
-	"encoding/hex"
 	"fmt"
 	"math/bits"
 	"testing"
@@ -129,28 +128,28 @@ func TestRefInclusionProof(t *testing.T) {
 	}{
 		{index: 0, size: 1, want: nil},
 		{index: 0, size: 2, want: [][]byte{
-			hx("96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7"),
+			hd("96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7"),
 		}},
 		{index: 1, size: 2, want: [][]byte{
-			hx("6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"),
+			hd("6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"),
 		}},
 		{index: 2, size: 3, want: [][]byte{
-			hx("fac54203e7cc696cf0dfcb42c92a1d9dbaf70ad9e621f4bd8d98662f00e3c125"),
+			hd("fac54203e7cc696cf0dfcb42c92a1d9dbaf70ad9e621f4bd8d98662f00e3c125"),
 		}},
 		{index: 1, size: 5, want: [][]byte{
-			hx("6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"),
-			hx("5f083f0a1a33ca076a95279832580db3e0ef4584bdff1f54c8a360f50de3031e"),
-			hx("bc1a0643b12e4d2d7c77918f44e0f4f79a838b6cf9ec5b5c283e1f4d88599e6b"),
+			hd("6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"),
+			hd("5f083f0a1a33ca076a95279832580db3e0ef4584bdff1f54c8a360f50de3031e"),
+			hd("bc1a0643b12e4d2d7c77918f44e0f4f79a838b6cf9ec5b5c283e1f4d88599e6b"),
 		}},
 		{index: 0, size: 8, want: [][]byte{
-			hx("96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7"),
-			hx("5f083f0a1a33ca076a95279832580db3e0ef4584bdff1f54c8a360f50de3031e"),
-			hx("6b47aaf29ee3c2af9af889bc1fb9254dabd31177f16232dd6aab035ca39bf6e4"),
+			hd("96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7"),
+			hd("5f083f0a1a33ca076a95279832580db3e0ef4584bdff1f54c8a360f50de3031e"),
+			hd("6b47aaf29ee3c2af9af889bc1fb9254dabd31177f16232dd6aab035ca39bf6e4"),
 		}},
 		{index: 5, size: 8, want: [][]byte{
-			hx("bc1a0643b12e4d2d7c77918f44e0f4f79a838b6cf9ec5b5c283e1f4d88599e6b"),
-			hx("ca854ea128ed050b41b35ffc1b87b8eb2bde461e9e3b5596ece6b9d5975a0ae0"),
-			hx("d37ee418976dd95753c1c73862b9398fa2a2cf9b4ff0fdfe8b30cd95209614b7"),
+			hd("bc1a0643b12e4d2d7c77918f44e0f4f79a838b6cf9ec5b5c283e1f4d88599e6b"),
+			hd("ca854ea128ed050b41b35ffc1b87b8eb2bde461e9e3b5596ece6b9d5975a0ae0"),
+			hd("d37ee418976dd95753c1c73862b9398fa2a2cf9b4ff0fdfe8b30cd95209614b7"),
 		}},
 	} {
 		t.Run(fmt.Sprintf("%d:%d", tc.index, tc.size), func(t *testing.T) {
@@ -171,18 +170,18 @@ func TestRefConsistencyProof(t *testing.T) {
 	}{
 		{size1: 1, size2: 1, want: nil},
 		{size1: 1, size2: 8, want: [][]byte{
-			hx("96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7"),
-			hx("5f083f0a1a33ca076a95279832580db3e0ef4584bdff1f54c8a360f50de3031e"),
-			hx("6b47aaf29ee3c2af9af889bc1fb9254dabd31177f16232dd6aab035ca39bf6e4"),
+			hd("96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7"),
+			hd("5f083f0a1a33ca076a95279832580db3e0ef4584bdff1f54c8a360f50de3031e"),
+			hd("6b47aaf29ee3c2af9af889bc1fb9254dabd31177f16232dd6aab035ca39bf6e4"),
 		}},
 		{size1: 2, size2: 5, want: [][]byte{
-			hx("5f083f0a1a33ca076a95279832580db3e0ef4584bdff1f54c8a360f50de3031e"),
-			hx("bc1a0643b12e4d2d7c77918f44e0f4f79a838b6cf9ec5b5c283e1f4d88599e6b"),
+			hd("5f083f0a1a33ca076a95279832580db3e0ef4584bdff1f54c8a360f50de3031e"),
+			hd("bc1a0643b12e4d2d7c77918f44e0f4f79a838b6cf9ec5b5c283e1f4d88599e6b"),
 		}},
 		{size1: 6, size2: 8, want: [][]byte{
-			hx("0ebc5d3437fbe2db158b9f126a1d118e308181031d0a949f8dededebc558ef6a"),
-			hx("ca854ea128ed050b41b35ffc1b87b8eb2bde461e9e3b5596ece6b9d5975a0ae0"),
-			hx("d37ee418976dd95753c1c73862b9398fa2a2cf9b4ff0fdfe8b30cd95209614b7"),
+			hd("0ebc5d3437fbe2db158b9f126a1d118e308181031d0a949f8dededebc558ef6a"),
+			hd("ca854ea128ed050b41b35ffc1b87b8eb2bde461e9e3b5596ece6b9d5975a0ae0"),
+			hd("d37ee418976dd95753c1c73862b9398fa2a2cf9b4ff0fdfe8b30cd95209614b7"),
 		}},
 	} {
 		t.Run(fmt.Sprintf("%d:%d", tc.size1, tc.size2), func(t *testing.T) {
@@ -193,13 +192,4 @@ func TestRefConsistencyProof(t *testing.T) {
 			}
 		})
 	}
-}
-
-// hx decodes a hex string or panics.
-func hx(hs string) []byte {
-	data, err := hex.DecodeString(hs)
-	if err != nil {
-		panic(fmt.Errorf("failed to decode test data: %s", hs))
-	}
-	return data
 }
