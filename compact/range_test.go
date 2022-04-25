@@ -30,10 +30,7 @@ import (
 	"github.com/transparency-dev/merkle/testonly"
 )
 
-var (
-	hashChildren = rfc6962.DefaultHasher.HashChildren
-	factory      = &compact.RangeFactory{Hash: hashChildren}
-)
+var factory = &compact.RangeFactory{Hash: rfc6962.DefaultHasher.HashChildren}
 
 // leafData returns test leaf data that depends on the passed in leaf index.
 func leafData(index uint64) []byte {
@@ -75,7 +72,7 @@ func newTree(t *testing.T, size uint64) (*tree, compact.VisitFn) {
 	// Compute internal node hashes.
 	for lvl := 1; lvl < levels; lvl++ {
 		for i := range nodes[lvl] {
-			nodes[lvl][i].hash = hashChildren(nodes[lvl-1][i*2].hash, nodes[lvl-1][i*2+1].hash)
+			nodes[lvl][i].hash = factory.Hash(nodes[lvl-1][i*2].hash, nodes[lvl-1][i*2+1].hash)
 		}
 	}
 
@@ -91,7 +88,7 @@ func (tr *tree) rootHash() []byte {
 			if hash == nil {
 				hash = root
 			} else {
-				hash = hashChildren(root, hash)
+				hash = factory.Hash(root, hash)
 			}
 		}
 	}

@@ -20,13 +20,12 @@ import (
 	"testing"
 )
 
-var (
-	hashChildren = func(_, _ []byte) []byte { return []byte("fake-hash") }
-	factory      = &RangeFactory{Hash: hashChildren}
-)
+var factory = &RangeFactory{Hash: func(_, _ []byte) []byte {
+	return []byte("fake-hash")
+}}
 
 func TestAppendRangeErrors(t *testing.T) {
-	anotherFactory := &RangeFactory{Hash: hashChildren}
+	anotherFactory := &RangeFactory{Hash: factory.Hash}
 
 	nonEmpty1, _ := factory.NewRange(7, 8, [][]byte{[]byte("hash")})
 	nonEmpty2, _ := factory.NewRange(0, 6, [][]byte{[]byte("hash0"), []byte("hash1")})
@@ -100,7 +99,7 @@ func TestEqual(t *testing.T) {
 				hashes: [][]byte{[]byte("hash 1"), []byte("hash 2")},
 			},
 			rhs: &Range{
-				f:      &RangeFactory{Hash: hashChildren},
+				f:      &RangeFactory{Hash: factory.Hash},
 				begin:  17,
 				end:    23,
 				hashes: [][]byte{[]byte("hash 1"), []byte("hash 2")},
