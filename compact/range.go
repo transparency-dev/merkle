@@ -41,10 +41,8 @@ func (f *RangeFactory) NewRange(begin, end uint64, hashes [][]byte) (*Range, err
 	if end < begin {
 		return nil, fmt.Errorf("invalid range: end=%d, want >= %d", end, begin)
 	}
-	left, right := Decompose(begin, end)
-	ones := bits.OnesCount64(left) + bits.OnesCount64(right)
-	if ln := len(hashes); ln != ones {
-		return nil, fmt.Errorf("invalid hashes: got %d values, want %d", ln, ones)
+	if got, want := len(hashes), RangeSize(begin, end); got != want {
+		return nil, fmt.Errorf("invalid hashes: got %d values, want %d", got, want)
 	}
 	return &Range{f: f, begin: begin, end: end, hashes: hashes}, nil
 }
