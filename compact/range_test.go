@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package compact
+package compact_test
 
 import (
 	"bytes"
@@ -22,17 +22,17 @@ import (
 	"math/bits"
 	"math/rand"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/transparency-dev/merkle/compact"
 	"github.com/transparency-dev/merkle/rfc6962"
 	"github.com/transparency-dev/merkle/testonly"
 )
 
 var (
 	hashChildren = rfc6962.DefaultHasher.HashChildren
-	factory      = &RangeFactory{Hash: hashChildren}
+	factory      = &compact.RangeFactory{Hash: hashChildren}
 )
 
 // leafData returns test leaf data that depends on the passed in leaf index.
@@ -53,13 +53,13 @@ type tree struct {
 }
 
 // newTree creates a new Merkle tree of the given size.
-func newTree(t *testing.T, size uint64) (*tree, VisitFn) {
+func newTree(t *testing.T, size uint64) (*tree, compact.VisitFn) {
 	levels := bits.Len64(size)
 	// Allocate the nodes.
 	nodes := make([][]treeNode, levels)
 	tr := &tree{size: size, nodes: nodes}
 	// Attach a visitor to the nodes and the testing handler.
-	visit := func(id NodeID, hash []byte) {
+	visit := func(id compact.NodeID, hash []byte) {
 		if err := tr.visit(id.Level, id.Index, hash); err != nil {
 			t.Errorf("visit %+v: %v", id, err)
 		}
@@ -114,7 +114,7 @@ func (tr *tree) visit(level uint, index uint64, hash []byte) error {
 }
 
 // verifyRange checks that the compact range's hashes match the tree.
-func (tr *tree) verifyRange(t *testing.T, r *Range, wantMatch bool) {
+func (tr *tree) verifyRange(t *testing.T, r *compact.Range, wantMatch bool) {
 	t.Helper()
 	pos := r.Begin()
 	if r.End() > tr.size {
@@ -122,7 +122,7 @@ func (tr *tree) verifyRange(t *testing.T, r *Range, wantMatch bool) {
 	}
 
 	// Naively build the expected list of hashes comprising the compact range.
-	left, right := Decompose(pos, r.End())
+	left, right := compact.Decompose(pos, r.End())
 	var hashes [][]byte
 	for lvl := uint(0); lvl < 64; lvl++ {
 		if left&(1<<lvl) != 0 {
@@ -149,7 +149,7 @@ func (tr *tree) verifyRange(t *testing.T, r *Range, wantMatch bool) {
 // This is to verify the efficiency property of compact ranges: any merging
 // process resulting in a single range generates *all* internal nodes, and each
 // node is generated only once.
-func (tr *tree) verifyAllVisited(t *testing.T, r *Range) {
+func (tr *tree) verifyAllVisited(t *testing.T, r *compact.Range) {
 	t.Helper()
 	if r.Begin() != 0 || r.End() != tr.size {
 		t.Errorf("range mismatch: got [%d,%d), want [%d,%d)", r.Begin(), r.End(), 0, tr.size)
@@ -248,7 +248,7 @@ func TestMergeInBatches(t *testing.T) {
 	const batch = uint64(13)
 	tree, visit := newTree(t, numNodes)
 
-	batches := make([]*Range, 0)
+	batches := make([]*compact.Range, 0)
 	// Merge all the nodes within the batches.
 	for i := uint64(0); i < numNodes; i += batch {
 		rng := factory.NewEmptyRange(i)
@@ -282,8 +282,8 @@ func TestMergeRandomly(t *testing.T) {
 			t.Logf("Tree size: %d", numNodes)
 
 			tree, visit := newTree(t, numNodes)
-			var mergeAll func(begin, end uint64) *Range // Enable recursion.
-			mergeAll = func(begin, end uint64) *Range {
+			var mergeAll func(begin, end uint64) *compact.Range // Enable recursion.
+			mergeAll = func(begin, end uint64) *compact.Range {
 				rng := factory.NewEmptyRange(begin)
 				if begin+1 == end {
 					if err := rng.Append(tree.leaf(begin), visit); err != nil {
@@ -351,8 +351,8 @@ func TestNewRangeWithStorage(t *testing.T) {
 	tree, _ := newTree(t, numNodes)
 	root := tree.rootHash()
 
-	nodes := make(map[NodeID][]byte)
-	getHashes := func(ids []NodeID) [][]byte {
+	nodes := make(map[compact.NodeID][]byte)
+	getHashes := func(ids []compact.NodeID) [][]byte {
 		hashes := make([][]byte, len(ids))
 		for i, id := range ids {
 			hashes[i] = nodes[id]
@@ -362,13 +362,13 @@ func TestNewRangeWithStorage(t *testing.T) {
 
 	cr := factory.NewEmptyRange(0)
 	for i := uint64(0); i < numNodes; i++ {
-		nodes[NewNodeID(0, i)] = tree.leaf(i)
-		if err := cr.Append(tree.leaf(i), func(id NodeID, hash []byte) {
+		nodes[compact.NewNodeID(0, i)] = tree.leaf(i)
+		if err := cr.Append(tree.leaf(i), func(id compact.NodeID, hash []byte) {
 			nodes[id] = hash
 		}); err != nil {
 			t.Fatalf("%d: Append: %v", i, err)
 		}
-		hashes := getHashes(RangeNodes(0, i+1, nil))
+		hashes := getHashes(compact.RangeNodes(0, i+1, nil))
 		var err error
 		if cr, err = factory.NewRange(0, i+1, hashes); err != nil {
 			t.Fatalf("%d: NewRange: %v", i+1, err)
@@ -381,64 +381,6 @@ func TestNewRangeWithStorage(t *testing.T) {
 	}
 	if !bytes.Equal(got, root) {
 		t.Fatalf("Got root hash %x, want %x", got, root)
-	}
-}
-
-func TestAppendRangeErrors(t *testing.T) {
-	anotherFactory := &RangeFactory{Hash: hashChildren}
-	nonEmpty1, _ := factory.NewRange(7, 8, [][]byte{[]byte("hash")})
-	nonEmpty2, _ := factory.NewRange(0, 6, [][]byte{[]byte("hash0"), []byte("hash1")})
-	nonEmpty3, _ := factory.NewRange(6, 7, [][]byte{[]byte("hash")})
-	corrupt := func(rng *Range, dBegin, dEnd int64) *Range {
-		rng.begin = uint64(int64(rng.begin) + dBegin)
-		rng.end = uint64(int64(rng.end) + dEnd)
-		return rng
-	}
-	for _, tc := range []struct {
-		desc    string
-		l, r    *Range
-		wantErr string
-	}{
-		{
-			desc: "ok",
-			l:    factory.NewEmptyRange(0),
-			r:    factory.NewEmptyRange(0),
-		},
-		{
-			desc:    "incompatible",
-			l:       factory.NewEmptyRange(0),
-			r:       anotherFactory.NewEmptyRange(0),
-			wantErr: "incompatible ranges",
-		},
-		{
-			desc:    "disjoint",
-			l:       factory.NewEmptyRange(0),
-			r:       factory.NewEmptyRange(1),
-			wantErr: "ranges are disjoint",
-		},
-		{
-			desc:    "left_corrupted",
-			l:       corrupt(factory.NewEmptyRange(7), -7, 0),
-			r:       nonEmpty1,
-			wantErr: "corrupted lhs range",
-		},
-		{
-			desc:    "right_corrupted",
-			l:       nonEmpty2,
-			r:       corrupt(nonEmpty3, 0, 20),
-			wantErr: "corrupted rhs range",
-		},
-	} {
-		t.Run(tc.desc, func(t *testing.T) {
-			err := tc.l.AppendRange(tc.r, nil)
-			if tc.wantErr == "" {
-				if err != nil {
-					t.Fatalf("AppendRange: %v; want nil", err)
-				}
-			} else if err == nil || !strings.HasPrefix(err.Error(), tc.wantErr) {
-				t.Fatalf("AppendRange: %v; want containing %q", err, tc.wantErr)
-			}
-		})
 	}
 }
 
@@ -537,7 +479,7 @@ func TestGetRootHashGolden(t *testing.T) {
 				}
 			}
 			visited := make([]node, 0, len(tc.wantNodes))
-			hash, err := rng.GetRootHash(func(id NodeID, hash []byte) {
+			hash, err := rng.GetRootHash(func(id compact.NodeID, hash []byte) {
 				visited = append(visited, node{level: id.Level, index: id.Index, hash: base64.StdEncoding.EncodeToString(hash)})
 			})
 			if err != nil {
@@ -573,7 +515,7 @@ func TestDecomposeCases(t *testing.T) {
 		{begin: 31, end: 45, wantL: 0x01, wantR: 0x0d}, // subtree sizes [1], [8, 4, 1]
 	} {
 		t.Run(fmt.Sprintf("[%d,%d)", tc.begin, tc.end), func(t *testing.T) {
-			gotL, gotR := Decompose(tc.begin, tc.end)
+			gotL, gotR := compact.Decompose(tc.begin, tc.end)
 			if gotL != tc.wantL || gotR != tc.wantR {
 				t.Errorf("Decompose(%d,%d)=0b%b,0b%b, want 0b%b,0b%b", tc.begin, tc.end, gotL, gotR, tc.wantL, tc.wantR)
 			}
@@ -582,7 +524,7 @@ func TestDecomposeCases(t *testing.T) {
 }
 
 func verifyDecompose(begin, end uint64) error {
-	left, right := Decompose(begin, end)
+	left, right := compact.Decompose(begin, end)
 	// Smoke test the sum of decomposition masks.
 	if left+right != end-begin {
 		return fmt.Errorf("%d+%d != %d-%d", left, right, begin, end)
@@ -632,155 +574,6 @@ func TestDecomposePow2(t *testing.T) {
 			end += end - 1
 			if err := verifyDecompose(0, end); err != nil {
 				t.Fatalf("verifyDecompose(%d,%d): %v", 0, end, err)
-			}
-		})
-	}
-}
-
-func TestGetMergePath(t *testing.T) {
-	for _, tc := range []struct {
-		begin, mid, end uint64
-		wantLow         uint
-		wantHigh        uint
-		wantEmpty       bool
-	}{
-		{begin: 0, mid: 0, end: 0, wantEmpty: true},
-		{begin: 0, mid: 0, end: 1, wantEmpty: true},
-		{begin: 0, mid: 0, end: uint64(1) << 63, wantEmpty: true},
-		{begin: 0, mid: 1, end: 1, wantEmpty: true},
-		{begin: 0, mid: 1, end: 2, wantLow: 0, wantHigh: 1},
-		{begin: 0, mid: 16, end: 32, wantLow: 4, wantHigh: 5},
-		{begin: 0, mid: uint64(1) << 63, end: ^uint64(0), wantEmpty: true},
-		{begin: 0, mid: uint64(1) << 63, end: uint64(1)<<63 + 100500, wantEmpty: true},
-		{begin: 2, mid: 9, end: 13, wantLow: 0, wantHigh: 2},
-		{begin: 6, mid: 13, end: 17, wantLow: 0, wantHigh: 3},
-		{begin: 4, mid: 8, end: 16, wantEmpty: true},
-		{begin: 8, mid: 12, end: 16, wantLow: 2, wantHigh: 3},
-		{begin: 4, mid: 6, end: 12, wantLow: 1, wantHigh: 2},
-		{begin: 8, mid: 10, end: 16, wantLow: 1, wantHigh: 3},
-		{begin: 11, mid: 17, end: 27, wantLow: 0, wantHigh: 3},
-		{begin: 11, mid: 16, end: 27, wantEmpty: true},
-	} {
-		t.Run(fmt.Sprintf("%d:%d:%d", tc.begin, tc.mid, tc.end), func(t *testing.T) {
-			low, high := getMergePath(tc.begin, tc.mid, tc.end)
-			if tc.wantEmpty {
-				if low < high {
-					t.Fatalf("getMergePath(%d,%d,%d)=%d,%d; want empty", tc.begin, tc.mid, tc.end, low, high)
-				}
-			} else if low != tc.wantLow || high != tc.wantHigh {
-				t.Fatalf("getMergePath(%d,%d,%d)=%d,%d; want %d,%d", tc.begin, tc.mid, tc.end, low, high, tc.wantLow, tc.wantHigh)
-			}
-		})
-	}
-}
-
-func TestEqual(t *testing.T) {
-	for _, test := range []struct {
-		desc      string
-		lhs       *Range
-		rhs       *Range
-		wantEqual bool
-	}{
-		{
-			desc: "incompatible trees",
-			lhs: &Range{
-				f:      factory,
-				begin:  17,
-				end:    23,
-				hashes: [][]byte{[]byte("hash 1"), []byte("hash 2")},
-			},
-			rhs: &Range{
-				f:      &RangeFactory{Hash: hashChildren},
-				begin:  17,
-				end:    23,
-				hashes: [][]byte{[]byte("hash 1"), []byte("hash 2")},
-			},
-		},
-
-		{
-			desc: "unequal begin",
-			lhs: &Range{
-				f:      factory,
-				begin:  17,
-				end:    23,
-				hashes: [][]byte{[]byte("hash 1"), []byte("hash 2")},
-			},
-			rhs: &Range{
-				f:      factory,
-				begin:  18,
-				end:    23,
-				hashes: [][]byte{[]byte("hash 1"), []byte("hash 2")},
-			},
-		},
-
-		{
-			desc: "unequal end",
-			lhs: &Range{
-				f:      factory,
-				begin:  17,
-				end:    23,
-				hashes: [][]byte{[]byte("hash 1"), []byte("hash 2")},
-			},
-			rhs: &Range{
-				f:      factory,
-				begin:  17,
-				end:    24,
-				hashes: [][]byte{[]byte("hash 1"), []byte("hash 2")},
-			},
-		},
-
-		{
-			desc: "unequal number of hashes",
-			lhs: &Range{
-				f:      factory,
-				begin:  17,
-				end:    23,
-				hashes: [][]byte{[]byte("hash 1"), []byte("hash 2")},
-			},
-			rhs: &Range{
-				f:      factory,
-				begin:  17,
-				end:    23,
-				hashes: [][]byte{[]byte("hash 1")},
-			},
-		},
-
-		{
-			desc: "mismatched hash",
-			lhs: &Range{
-				f:      factory,
-				begin:  17,
-				end:    23,
-				hashes: [][]byte{[]byte("hash 1"), []byte("hash 2")},
-			},
-			rhs: &Range{
-				f:      factory,
-				begin:  17,
-				end:    23,
-				hashes: [][]byte{[]byte("hash 1"), []byte("not hash 2")},
-			},
-		},
-
-		{
-			desc: "equal ranges",
-			lhs: &Range{
-				f:      factory,
-				begin:  17,
-				end:    23,
-				hashes: [][]byte{[]byte("hash 1"), []byte("hash 2")},
-			},
-			rhs: &Range{
-				f:      factory,
-				begin:  17,
-				end:    23,
-				hashes: [][]byte{[]byte("hash 1"), []byte("hash 2")},
-			},
-			wantEqual: true,
-		},
-	} {
-		t.Run(test.desc, func(t *testing.T) {
-			if got, want := test.lhs.Equal(test.rhs), test.wantEqual; got != want {
-				t.Errorf("%+v.Equal(%+v) = %v, want %v", test.lhs, test.rhs, got, want)
 			}
 		})
 	}

@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package testonly contains code and data for testing Merkle trees.
+// Package testonly contains code and data for testing Merkle trees, such as a
+// reference implementation of in-memory Merkle tree.
 package testonly
 
-import (
-	"encoding/hex"
-)
+import "encoding/hex"
 
 func hd(b string) []byte {
 	r, err := hex.DecodeString(b)
