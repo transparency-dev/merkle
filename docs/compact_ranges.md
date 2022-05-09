@@ -27,7 +27,9 @@ example, in the picture below, the range `[2, 9)` is covered by perfect nodes
 `[1.1, 2.1, 8]`, and the range `[12, 16)` is covered by a single perfect node
 `2.3`.
 
-![compact_ranges](images/compact_ranges.svg)
+<p align="center">
+  <img src="images/compact_ranges.svg" width="60%">
+</p>
 
 Note that, in the picture above, range `[0, 21)` could be covered by a single
 node `5.0`. However, we only use the perfect nodes for a compact range, so it
@@ -48,7 +50,9 @@ The core property that makes compact ranges widely usable is that they are
 merged into an `[L, R)` range. Consider the picture below for an intuitive
 understanding of how it works.
 
-![compact_ranges_merge](images/compact_ranges_merge.svg)
+<p align="center">
+  <img src="images/compact_ranges_merge.svg" width="60%">
+</p>
 
 Given two compact ranges, `[2, 9)` and `[9, 16)`, each represented by a set of
 node hashes (three green and three cyan nodes correspondingly), we “merge” two
@@ -103,7 +107,9 @@ middle range `[i, i+1)` formed simply as the hash of this leaf. The result
 will be a compact range `[0, N)`, which can be compared with the trusted root
 hash.
 
-![inclusion_proof](images/inclusion_proof.svg)
+<p align="center">
+  <img src="images/inclusion_proof.svg" width="60%">
+</p>
 
 In the example above, an inclusion proof for leaf `6` consists of compact
 ranges `[0, 6)` and `[7, 16)`.
@@ -125,7 +131,9 @@ complementary part of the tree.
 For example, consider the case when we want to prove the authenticity of values
 within the range `[6, 13)`, as shown in the picture below.
 
-![inclusion_proof_range](images/inclusion_proof_range.svg)
+<p align="center">
+  <img src="images/inclusion_proof_range.svg" width="60%">
+</p>
 
 To do so, the server can provide two compact ranges: `[0, 6)` and `[13, 16)`.
 The client will then construct the middle compact range locally (based on the
@@ -153,7 +161,9 @@ individual entry inclusion proofs which could cost `O(N log N)`.
 A consistency proof (or proof of the append-only property) proves to a client
 that one tree state is the result of appending some entries to another state.
 
-![consistency_proof](images/consistency_proof.svg)
+<p align="center">
+  <img src="images/consistency_proof.svg" width="60%">
+</p>
 
 The definition of the consistency proof already contains a hint on how to model
 it with compact ranges. Suppose a client knows a compact range of the old tree,
@@ -192,7 +202,9 @@ Since the Merkle tree is a highly regular recursive structure, its geometry can
 be split into pieces of a controllable size that a single server can handle.
 See the picture below for an intuition how.
 
-![distributed_tree](images/distributed_tree.svg)
+<p align="center">
+  <img src="images/distributed_tree.svg" width="80%">
+</p>
 
 The construction work is split across a number of "leaf" workers, each piece of
 work is based on a relatively small range of leaves. When the corresponding
@@ -241,7 +253,9 @@ range `[0, N)`.
 The benefit of storing a compact range is in the ability to incrementally
 update it as the tree state evolves. See the picture below.
 
-![witness](images/witness.svg)
+<p align="center">
+  <img src="images/witness.svg" width="80%">
+</p>
 
 Similarly to the [updatable proofs](#updatable-proofs), the accumulated space /
 bandwidth complexity of updating the state `O(N)` times is `O(N)`, as opposed
