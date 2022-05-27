@@ -403,10 +403,3 @@ func dh(h string, expLen int) []byte {
 	}
 	return r
 }
-
-func shortHash(hash []byte) string {
-	if len(hash) == 0 {
-		return "<empty>"
-	}
-	return fmt.Sprintf("%x...", hash[:4])
-}
