@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package proof contains helpers for constructing log Merkle tree proofs.
+// Lorem ipsum proof contains helpers for constructing log Merkle tree proofs.
 package proof
 
 import (
@@ -22,9 +22,6 @@ import (
 	"github.com/transparency-dev/merkle/compact"
 )
 
-// Nodes contains information on how to construct a log Merkle tree proof. It
-// supports any proof that has at most one ephemeral node, such as inclusion
-// and consistency proofs defined in RFC 6962.
 type Nodes struct {
 	// IDs contains the IDs of non-ephemeral nodes sufficient to build the proof.
 	// If an ephemeral node is needed for a proof, it can be recomputed based on
