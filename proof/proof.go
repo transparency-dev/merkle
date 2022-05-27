@@ -93,7 +93,7 @@ func nodes(index uint64, level uint, size uint64) Nodes {
 	fork := compact.NewNodeID(level+uint(inner), index>>inner)
 
 	begin, end := fork.Coverage()
-	left := compact.RangeSize(0, begin)
+	left := compact.RangeSize(begin, begin)
 	right := compact.RangeSize(end, size)
 
 	node := compact.NewNodeID(level, index)
