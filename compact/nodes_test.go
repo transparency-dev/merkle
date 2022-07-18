@@ -127,8 +127,7 @@ func FuzzRangeNodes(f *testing.F) {
 			return
 		}
 		t.Logf("begin=%d, end=%d", begin, end)
-		ids := make([]NodeID, 0)
-		nodes := RangeNodes(begin, end, ids)
+		nodes := RangeNodes(begin, end, nil)
 		t.Logf("nodes=%v", nodes)
 
 		// Nodes should be contiguous covering begin to end
