@@ -14,24 +14,24 @@ import (
 // Compute and verify consistency proofs
 func FuzzConsistencyProof(f *testing.F) {
 	for size := 0; size <= 8; size++ {
-		for size2 := 0; size2 <= size; size2++ {
-			for size1 := 0; size1 <= size2; size1++ {
-				f.Add(uint64(size), uint64(size1), uint64(size2))
+		for end := 0; end <= size; end++ {
+			for begin := 0; begin <= end; begin++ {
+				f.Add(uint64(size), uint64(begin), uint64(end))
 			}
 		}
 	}
-	f.Fuzz(func(t *testing.T, size, size1, size2 uint64) {
-		t.Logf("size=%d, size1=%d, size2=%d", size, size1, size2)
-		if size1 > size2 || size2 > size {
+	f.Fuzz(func(t *testing.T, size, begin, end uint64) {
+		t.Logf("size=%d, begin=%d, end=%d", size, begin, end)
+		if begin > end || end > size {
 			return
 		}
 		tree := newTree(genEntries(size))
-		p, err := tree.ConsistencyProof(size1, size2)
+		p, err := tree.ConsistencyProof(begin, end)
 		t.Logf("proof=%v", p)
 		if err != nil {
 			t.Error(err)
 		}
-		err = proof.VerifyConsistency(tree.hasher, size1, size2, p, tree.HashAt(size1), tree.HashAt(size2))
+		err = proof.VerifyConsistency(tree.hasher, begin, end, p, tree.HashAt(begin), tree.HashAt(end))
 		if err != nil {
 			t.Error(err)
 		}
@@ -104,7 +104,7 @@ func FuzzInclusionProofAgainstReferenceImplementation(f *testing.F) {
 		}
 		want := refInclusionProof(entries, index, tree.hasher)
 		if diff := cmp.Diff(got, want, cmpopts.EquateEmpty()); diff != "" {
-			t.Fatalf("InclusionProof(%d, %d): diff (-got +want)\n%s", index, size, diff)
+			t.Errorf("InclusionProof(%d, %d): diff (-got +want)\n%s", index, size, diff)
 		}
 	})
 }
