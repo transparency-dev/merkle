@@ -1,0 +1,6 @@
+# https://google.github.io/clusterfuzzlite//build-integration/go-lang/
+language: go
+fuzzing_engines:
+  - libfuzzer
+sanitizers:
+  - address
