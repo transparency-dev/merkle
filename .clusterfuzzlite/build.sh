@@ -1,7 +1,7 @@
 # https://google.github.io/oss-fuzz/getting-started/new-project-guide/go-lang/#buildsh
 # undocumented dependency
-go install github.com/AdamKorcz/go-118-fuzz-build@latest
-go get github.com/AdamKorcz/go-118-fuzz-build/utils
+go install github.com/AdamKorcz/go-118-fuzz-build@c548436
+go get github.com/AdamKorcz/go-118-fuzz-build/testing@c548436
 
 # workaround https://github.com/AdamKorcz/go-118-fuzz-build/issues/2
 mv testonly/constants.go        testonly/constants_fuzz.go
