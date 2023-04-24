@@ -1,0 +1,49 @@
+timeout: 1200s
+options:
+  machineType: E2_HIGHCPU_32
+  volumes:
+  - name: go-modules
+    path: /go
+  env:
+  - GOPROXY=https://proxy.golang.org
+  - PROJECT_ROOT=github.com/google/trillian-examples
+  - GOPATH=/go
+  - GOLANG_PROTOBUF_REGISTRATION_CONFLICT=ignore # Temporary work-around v1.proto already registered error.
+
+# Cloud Build logs sent to GCS bucket
+logsBucket: 'gs://trillian-cloudbuild-logs'
+
+steps:
+# Run the presubmit build, generate, and test with coverage enabled.
+- name: gcr.io/cloud-builders/docker
+  entrypoint: 'bash'
+  id: 'presubmit-build-and-test-with-coverage'
+  args:
+    - '-exc'
+    - |
+      ./scripts/presubmit.sh --coverage --no-linters
+      # Check re-generation didn't change anything.
+      echo "Checking that generated files are the same as checked-in versions."
+      git diff --  --exit-code
+
+# Run the presubmit linters
+- name: gcr.io/cloud-builders/docker
+  entrypoint: 'bash'
+  id: 'presubmit-lint'
+  args:
+    - '-exc'
+    - |
+      ./scripts/presubmit.sh --no-build --no-generate
+
+# Submit coverage results
+- name: 'gcr.io/cloud-builders/curl'
+  entrypoint: bash
+  args: ['-c', 'bash <(curl -s https://codecov.io/bash)']
+  env:
+  - 'VCS_COMMIT_ID=$COMMIT_SHA'
+  - 'VCS_BRANCH_NAME=$BRANCH_NAME'
+  - 'VCS_PULL_REQUEST=$_PR_NUMBER'
+  - 'CI_BUILD_ID=$BUILD_ID'
+  - 'CODECOV_TOKEN=$_CODECOV_TOKEN' # _CODECOV_TOKEN is specified in the cloud build trigger
+  waitFor: ['presubmit-build-and-test-with-coverage']
+
