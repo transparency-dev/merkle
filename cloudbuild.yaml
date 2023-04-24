@@ -1,22 +1,16 @@
-timeout: 1200s
+timeout: 300s
 options:
   machineType: E2_HIGHCPU_32
   volumes:
   - name: go-modules
     path: /go
   env:
-  - GOPROXY=https://proxy.golang.org
-  - PROJECT_ROOT=github.com/google/trillian-examples
   - GOPATH=/go
-  - GOLANG_PROTOBUF_REGISTRATION_CONFLICT=ignore # Temporary work-around v1.proto already registered error.
-
-# Cloud Build logs sent to GCS bucket
-logsBucket: 'gs://trillian-cloudbuild-logs'
 
 steps:
 # Run the presubmit build, generate, and test with coverage enabled.
-- name: gcr.io/cloud-builders/docker
-  entrypoint: 'bash'
+- name: golang:1.19-alpine
+  entrypoint: '/bin/sh'
   id: 'presubmit-build-and-test-with-coverage'
   args:
     - '-exc'
@@ -27,8 +21,8 @@ steps:
       git diff --  --exit-code
 
 # Run the presubmit linters
-- name: gcr.io/cloud-builders/docker
-  entrypoint: 'bash'
+- name: golang:1.19-alpine
+  entrypoint: '/bin/sh'
   id: 'presubmit-lint'
   args:
     - '-exc'
