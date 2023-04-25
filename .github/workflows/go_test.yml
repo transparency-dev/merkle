@@ -13,6 +13,6 @@ jobs:
     - uses: actions/setup-go@c4a742cab115ed795e34d4513e2cf7d472deb55f # v3.3.1
       with:
         go-version: ${{ matrix.go-version }}
-    - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8 # v3.1.0
+    - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.1.0
     - run: go test -v -race -covermode=atomic -coverprofile=coverage.out ./...
     - uses: codecov/codecov-action@894ff025c7b54547a9a2a1e9f228beae737ad3c2 # v3.1.3
