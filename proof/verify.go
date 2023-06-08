@@ -1,4 +1,4 @@
-// Copyright 2017 Google LLC. All Rights Reserved.
+// Copyright 2022 Google LLC. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,161 +16,140 @@ package proof
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"math/bits"
 
-	"github.com/transparency-dev/merkle"
+	"github.com/transparency-dev/merkle/compact"
 )
 
-// RootMismatchError occurs when an inclusion proof fails.
+// RootMismatchError is an error occuring when a proof verification fails.
 type RootMismatchError struct {
-	ExpectedRoot   []byte
-	CalculatedRoot []byte
+	Size     uint64 // The size at which the root hash mismatch happened.
+	Computed []byte // The computed root hash at this size.
+	Expected []byte // The expected root hash at this size.
 }
 
+// Error returns the error string for RootMismatchError.
 func (e RootMismatchError) Error() string {
-	return fmt.Sprintf("calculated root:\n%v\n does not match expected root:\n%v", e.CalculatedRoot, e.ExpectedRoot)
+	return fmt.Sprintf("root hash at size %d mismatched: computed %x, expected %x", e.Size, e.Computed, e.Expected)
 }
 
-func verifyMatch(calculated, expected []byte) error {
-	if !bytes.Equal(calculated, expected) {
-		return RootMismatchError{ExpectedRoot: expected, CalculatedRoot: calculated}
+func verifyMatch(size uint64, computed, expected []byte) error {
+	if !bytes.Equal(computed, expected) {
+		return RootMismatchError{Size: size, Computed: computed, Expected: expected}
 	}
 	return nil
 }
 
+// NodeHasher allows computing hashes of internal nodes of the Merkle tree.
+type NodeHasher interface {
+	// HashChildren returns hash of a tree node based on hashes of its children.
+	HashChildren(left, right []byte) []byte
+}
+
 // VerifyInclusion verifies the correctness of the inclusion proof for the leaf
 // with the specified hash and index, relatively to the tree of the given size
-// and root hash. Requires 0 <= index < size.
-func VerifyInclusion(hasher merkle.LogHasher, index, size uint64, leafHash []byte, proof [][]byte, root []byte) error {
-	calcRoot, err := RootFromInclusionProof(hasher, index, size, leafHash, proof)
-	if err != nil {
-		return err
-	}
-	return verifyMatch(calcRoot, root)
-}
-
-// RootFromInclusionProof calculates the expected root hash for a tree of the
-// given size, provided a leaf index and hash with the corresponding inclusion
-// proof. Requires 0 <= index < size.
-func RootFromInclusionProof(hasher merkle.LogHasher, index, size uint64, leafHash []byte, proof [][]byte) ([]byte, error) {
+// and root hash. Requires 0 <= index < size. Returns RootMismatchError if the
+// computed root hash does not match the provided one.
+func VerifyInclusion(nh NodeHasher, index, size uint64, hash []byte, proof [][]byte, root []byte) error {
 	if index >= size {
-		return nil, fmt.Errorf("index is beyond size: %d >= %d", index, size)
+		return fmt.Errorf("index %d out of range for size %d", index, size)
 	}
-	if got, want := len(leafHash), hasher.Size(); got != want {
-		return nil, fmt.Errorf("leafHash has unexpected size %d, want %d", got, want)
-	}
-
-	inner, border := decompInclProof(index, size)
-	if got, want := len(proof), inner+border; got != want {
-		return nil, fmt.Errorf("wrong proof size %d, want %d", got, want)
-	}
-
-	res := chainInner(hasher, leafHash, proof[:inner], index)
-	res = chainBorderRight(hasher, res, proof[inner:])
-	return res, nil
+	return verify(nh, index, 0, size, hash, proof, root)
 }
 
-// VerifyConsistency checks that the passed-in consistency proof is valid
-// between the passed in tree sizes, with respect to the corresponding root
-// hashes. Requires 0 <= size1 <= size2.
-func VerifyConsistency(hasher merkle.LogHasher, size1, size2 uint64, proof [][]byte, root1, root2 []byte) error {
-	switch {
-	case size2 < size1:
-		return fmt.Errorf("size2 (%d) < size1 (%d)", size1, size2)
-	case size1 == size2:
-		if len(proof) > 0 {
-			return errors.New("size1=size2, but proof is not empty")
-		}
-		return verifyMatch(root1, root2)
-	case size1 == 0:
-		// Any size greater than 0 is consistent with size 0.
-		if len(proof) > 0 {
-			return fmt.Errorf("expected empty proof, but got %d components", len(proof))
-		}
-		return nil // Proof OK.
-	case len(proof) == 0:
-		return errors.New("empty proof")
+// VerifyConsistency verifies that the consistency proof is valid between the
+// two given tree sizes, with the corresponding root hashes.
+// Requires 0 <= size1 <= size2. Returns RootMismatchError if any of the
+// computed root hashes at size1 or size2 does not match the provided one.
+func VerifyConsistency(nh NodeHasher, size1, size2 uint64, proof [][]byte, root1, root2 []byte) error {
+	if size1 > size2 {
+		return fmt.Errorf("tree size %d > %d", size1, size2)
+	}
+	if (size1 == size2 || size1 == 0) && len(proof) != 0 {
+		return fmt.Errorf("incorrect proof size: got %d, want 0", len(proof))
+	}
+	if size1 == size2 {
+		return verifyMatch(size1, root1, root2)
+	}
+	if size1 == 0 {
+		return nil
 	}
 
-	inner, border := decompInclProof(size1-1, size2)
-	shift := bits.TrailingZeros64(size1)
-	inner -= shift // Note: shift < inner if size1 < size2.
+	// Find the root of the biggest perfect subtree that ends at size1.
+	level := uint(bits.TrailingZeros64(size1))
+	index := (size1 - 1) >> level
+	// The consistency proof consists of this node (except if size1 is a power of
+	// two, in which case adding this node would be redundant because the client
+	// is assumed to know it from a checkpoint), and nodes of the inclusion proof
+	// into this node in the tree of size2.
 
-	// The proof includes the root hash for the sub-tree of size 2^shift.
-	seed, start := proof[0], 1
-	if size1 == 1<<uint(shift) { // Unless size1 is that very 2^shift.
-		seed, start = root1, 0
+	// Handle the case when size1 is a power of 2.
+	if index == 0 {
+		return verify(nh, index, level, size2, root1, proof, root2)
 	}
-	if got, want := len(proof), start+inner+border; got != want {
-		return fmt.Errorf("wrong proof size %d, want %d", got, want)
-	}
-	proof = proof[start:]
-	// Now len(proof) == inner+border, and proof is effectively a suffix of
-	// inclusion proof for entry |size1-1| in a tree of size |size2|.
 
-	// Verify the first root.
-	mask := (size1 - 1) >> uint(shift) // Start chaining from level |shift|.
-	hash1 := chainInnerRight(hasher, seed, proof[:inner], mask)
-	hash1 = chainBorderRight(hasher, hash1, proof[inner:])
-	if err := verifyMatch(hash1, root1); err != nil {
+	// Otherwise, the consistency proof is equivalent to an inclusion proof of
+	// its first hash. Verify it below.
+	if got, want := len(proof), 1+bits.Len64(size2-1)-int(level); got != want {
+		return fmt.Errorf("incorrect proof size: %d, want %d", got, want)
+	}
+	if err := verify(nh, index, level, size2, proof[0], proof[1:], root2); err != nil {
 		return err
 	}
 
-	// Verify the second root.
-	hash2 := chainInner(hasher, seed, proof[:inner], mask)
-	hash2 = chainBorderRight(hasher, hash2, proof[inner:])
-	return verifyMatch(hash2, root2)
-}
-
-// decompInclProof breaks down inclusion proof for a leaf at the specified
-// |index| in a tree of the specified |size| into 2 components. The splitting
-// point between them is where paths to leaves |index| and |size-1| diverge.
-// Returns lengths of the bottom and upper proof parts correspondingly. The sum
-// of the two determines the correct length of the inclusion proof.
-func decompInclProof(index, size uint64) (int, int) {
-	inner := innerProofSize(index, size)
-	border := bits.OnesCount64(index >> uint(inner))
-	return inner, border
-}
-
-func innerProofSize(index, size uint64) int {
-	return bits.Len64(index ^ (size - 1))
-}
-
-// chainInner computes a subtree hash for a node on or below the tree's right
-// border. Assumes |proof| hashes are ordered from lower levels to upper, and
-// |seed| is the initial subtree/leaf hash on the path located at the specified
-// |index| on its level.
-func chainInner(hasher merkle.LogHasher, seed []byte, proof [][]byte, index uint64) []byte {
-	for i, h := range proof {
-		if (index>>uint(i))&1 == 0 {
-			seed = hasher.HashChildren(seed, h)
-		} else {
-			seed = hasher.HashChildren(h, seed)
-		}
-	}
-	return seed
-}
-
-// chainInnerRight computes a subtree hash like chainInner, but only takes
-// hashes to the left from the path into consideration, which effectively means
-// the result is a hash of the corresponding earlier version of this subtree.
-func chainInnerRight(hasher merkle.LogHasher, seed []byte, proof [][]byte, index uint64) []byte {
-	for i, h := range proof {
+	inner := bits.Len64(index^(size2>>level)) - 1
+	hash := proof[0]
+	for i, h := range proof[1 : 1+inner] {
 		if (index>>uint(i))&1 == 1 {
-			seed = hasher.HashChildren(h, seed)
+			hash = nh.HashChildren(h, hash)
 		}
 	}
-	return seed
+	for _, h := range proof[1+inner:] {
+		hash = nh.HashChildren(h, hash)
+	}
+	return verifyMatch(size1, hash, root1)
 }
 
-// chainBorderRight chains proof hashes along tree borders. This differs from
-// inner chaining because |proof| contains only left-side subtree hashes.
-func chainBorderRight(hasher merkle.LogHasher, seed []byte, proof [][]byte) []byte {
-	for _, h := range proof {
-		seed = hasher.HashChildren(h, seed)
+func verify(nh NodeHasher, index uint64, level uint, size uint64, hash []byte, proof [][]byte, root []byte) error {
+	// Compute the `fork` node, where the path from root to (level, index) node
+	// diverges from the path to (0, size).
+	//
+	// The sibling of this node is the ephemeral node which represents a subtree
+	// that is not complete in the tree of the given size. To compute the hash
+	// of the ephemeral node, we need all the non-ephemeral nodes that cover the
+	// same range of leaves.
+	//
+	// The `inner` variable is how many layers up from (level, index) the `fork`
+	// and the ephemeral nodes are.
+	inner := bits.Len64(index^(size>>level)) - 1
+	fork := compact.NewNodeID(level+uint(inner), index>>inner)
+
+	begin, end := fork.Coverage()
+	left := compact.RangeSize(0, begin)
+	right := 1
+	if end == size { // No ephemeral nodes.
+		right = 0
 	}
-	return seed
+
+	if got, want := len(proof), inner+right+left; got != want {
+		return fmt.Errorf("incorrect proof size: %d, want %d", got, want)
+	}
+
+	node := compact.NewNodeID(level, index)
+	for _, h := range proof[:inner] {
+		if node.Index&1 == 0 {
+			hash = nh.HashChildren(hash, h)
+		} else {
+			hash = nh.HashChildren(h, hash)
+		}
+		node = node.Parent()
+	}
+	if right == 1 {
+		hash = nh.HashChildren(hash, proof[inner])
+	}
+	for _, h := range proof[inner+right:] {
+		hash = nh.HashChildren(h, hash)
+	}
+	return verifyMatch(size, hash, root)
 }
