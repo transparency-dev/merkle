@@ -45,7 +45,9 @@ jobs:
           # - you want to enable the Branch-Protection check on a *public* repository, or
           # - you are installing Scorecards on a *private* repository
           # To create the PAT, follow the steps in https://github.com/ossf/scorecard-action#authentication-with-pat.
-          repo_token: ${{ secrets.SCORECARD_TOKEN }}
+          # TODO(mhutchinson): Instead of this, we should use rulesets and then permissions are not needed:
+          # https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets
+          repo_token: ${{ secrets.TD_SCORECARD_READ_TOKEN }}
 
           # Public repositories:
           #   - Publish results to OpenSSF REST API for easy access by consumers
