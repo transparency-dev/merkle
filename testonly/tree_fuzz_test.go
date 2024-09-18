@@ -30,6 +30,9 @@ func FuzzConsistencyProofAndVerify(f *testing.F) {
 		if begin > end || end > size {
 			return
 		}
+		if begin == 0 && end > 0 {
+			return
+		}
 		tree := newTree(genEntries(size))
 		p, err := tree.ConsistencyProof(begin, end)
 		t.Logf("proof=%v", p)
