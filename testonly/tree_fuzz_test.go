@@ -14,9 +14,9 @@ import (
 
 // Compute and verify consistency proofs
 func FuzzConsistencyProofAndVerify(f *testing.F) {
-	for size := 0; size <= 8; size++ {
-		for end := 0; end <= size; end++ {
-			for begin := 0; begin <= end; begin++ {
+	for size := 1; size <= 8; size++ {
+		for end := 1; end <= size; end++ {
+			for begin := 1; begin <= end; begin++ {
 				f.Add(uint64(size), uint64(begin), uint64(end))
 			}
 		}

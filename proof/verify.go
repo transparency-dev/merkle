@@ -76,22 +76,26 @@ func RootFromInclusionProof(hasher merkle.LogHasher, index, size uint64, leafHas
 // between the passed in tree sizes, with respect to the corresponding root
 // hashes. Requires 0 <= size1 <= size2.
 func VerifyConsistency(hasher merkle.LogHasher, size1, size2 uint64, proof [][]byte, root1, root2 []byte) error {
+	hash2, err := RootFromConsistencyProof(hasher, size1, size2, proof, root1)
+	if err != nil {
+		return err
+	}
+	return verifyMatch(hash2, root2)
+}
+
+func RootFromConsistencyProof(hasher merkle.LogHasher, size1, size2 uint64, proof [][]byte, root1 []byte) ([]byte, error) {
 	switch {
 	case size2 < size1:
-		return fmt.Errorf("size2 (%d) < size1 (%d)", size1, size2)
+		return nil, fmt.Errorf("size2 (%d) < size1 (%d)", size1, size2)
 	case size1 == size2:
 		if len(proof) > 0 {
-			return errors.New("size1=size2, but proof is not empty")
+			return nil, errors.New("size1=size2, but proof is not empty")
 		}
-		return verifyMatch(root1, root2)
+		return root1, nil
 	case size1 == 0:
-		// Any size greater than 0 is consistent with size 0.
-		if len(proof) > 0 {
-			return fmt.Errorf("expected empty proof, but got %d components", len(proof))
-		}
-		return nil // Proof OK.
+		return nil, errors.New("Consistency proof from empty tree are meaningless")
 	case len(proof) == 0:
-		return errors.New("empty proof")
+		return nil, errors.New("empty proof")
 	}
 
 	inner, border := decompInclProof(size1-1, size2)
@@ -104,7 +108,7 @@ func VerifyConsistency(hasher merkle.LogHasher, size1, size2 uint64, proof [][]b
 		seed, start = root1, 0
 	}
 	if got, want := len(proof), start+inner+border; got != want {
-		return fmt.Errorf("wrong proof size %d, want %d", got, want)
+		return nil, fmt.Errorf("wrong proof size %d, want %d", got, want)
 	}
 	proof = proof[start:]
 	// Now len(proof) == inner+border, and proof is effectively a suffix of
@@ -115,13 +119,13 @@ func VerifyConsistency(hasher merkle.LogHasher, size1, size2 uint64, proof [][]b
 	hash1 := chainInnerRight(hasher, seed, proof[:inner], mask)
 	hash1 = chainBorderRight(hasher, hash1, proof[inner:])
 	if err := verifyMatch(hash1, root1); err != nil {
-		return err
+		return nil, err
 	}
 
 	// Verify the second root.
 	hash2 := chainInner(hasher, seed, proof[:inner], mask)
 	hash2 = chainBorderRight(hasher, hash2, proof[inner:])
-	return verifyMatch(hash2, root2)
+	return hash2, nil
 }
 
 // decompInclProof breaks down inclusion proof for a leaf at the specified
