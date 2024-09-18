@@ -74,7 +74,7 @@ func RootFromInclusionProof(hasher merkle.LogHasher, index, size uint64, leafHas
 
 // VerifyConsistency checks that the passed-in consistency proof is valid
 // between the passed in tree sizes, with respect to the corresponding root
-// hashes. Requires 0 <= size1 <= size2.
+// hashes. Requires 0 < size1 <= size2.
 func VerifyConsistency(hasher merkle.LogHasher, size1, size2 uint64, proof [][]byte, root1, root2 []byte) error {
 	hash2, err := RootFromConsistencyProof(hasher, size1, size2, proof, root1)
 	if err != nil {
@@ -83,6 +83,10 @@ func VerifyConsistency(hasher merkle.LogHasher, size1, size2 uint64, proof [][]b
 	return verifyMatch(hash2, root2)
 }
 
+// RootFromConsistencyProof calculates the expected root hash for a tree of the
+// given size2, provided a tree of size1 with root1, and a consistency proof.
+// Requires 0 < size1 <= size2.
+// Note that consistency proofs from a size1==0 cannot be computed.
 func RootFromConsistencyProof(hasher merkle.LogHasher, size1, size2 uint64, proof [][]byte, root1 []byte) ([]byte, error) {
 	switch {
 	case size2 < size1:
@@ -93,7 +97,7 @@ func RootFromConsistencyProof(hasher merkle.LogHasher, size1, size2 uint64, proo
 		}
 		return root1, nil
 	case size1 == 0:
-		return nil, errors.New("Consistency proof from empty tree are meaningless")
+		return nil, errors.New("consistency proof from empty tree is meaningless")
 	case len(proof) == 0:
 		return nil, errors.New("empty proof")
 	}
