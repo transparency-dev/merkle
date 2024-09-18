@@ -344,7 +344,7 @@ func TestVerifyConsistency(t *testing.T) {
 		{1, 1, root1, root2, proof1, true},
 		// Sizes that are always consistent.
 		{0, 0, root1, root1, proof1, false},
-		{0, 1, root1, root2, proof1, false},
+		{0, 1, root1, root2, proof1, true},
 		{1, 1, root2, root2, proof1, false},
 		// Time travel to the past.
 		{1, 0, root1, root2, proof1, true},
