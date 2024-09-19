@@ -1,5 +1,5 @@
 # https://google.github.io/clusterfuzzlite/build-integration/#dockerfile
-FROM gcr.io/oss-fuzz-base/base-builder-go@sha256:c7f01a616db0fc554d98edbd7d49a7177197f77fd4e1371bcb7774d7eac8216d
+FROM gcr.io/oss-fuzz-base/base-builder-go@sha256:37d560af1d31ae8d339902acaedb8eb6fdf3f04469706f39e3bbea44fa3fdeec
 COPY . $SRC/merkle
 WORKDIR $SRC/merkle
 COPY .clusterfuzzlite/build.sh $SRC/
