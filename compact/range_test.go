@@ -20,7 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"math/bits"
-	"math/rand"
+	"math/rand/v2"
 	"reflect"
 	"testing"
 
@@ -272,9 +272,9 @@ func TestMergeInBatches(t *testing.T) {
 
 // Build many trees of random size by randomly merging their sub-ranges.
 func TestMergeRandomly(t *testing.T) {
-	for seed := int64(1); seed < 100; seed++ {
+	for seed := uint64(1); seed < 100; seed++ {
 		t.Run(fmt.Sprintf("seed:%d", seed), func(t *testing.T) {
-			rnd := rand.New(rand.NewSource(seed))
+			rnd := rand.New(rand.NewPCG(0, seed))
 			numNodes := rand.Uint64() % 500
 			t.Logf("Tree size: %d", numNodes)
 
@@ -287,7 +287,7 @@ func TestMergeRandomly(t *testing.T) {
 						t.Fatalf("Append(%d): %v", begin, err)
 					}
 				} else if begin < end {
-					mid := begin + uint64(rnd.Int63n(int64(end-begin)))
+					mid := begin + rnd.Uint64N(end-begin)
 					if err := rng.AppendRange(mergeAll(begin, mid), visit); err != nil {
 						t.Fatalf("AppendRange(%d,%d): %v", begin, mid, err)
 					}

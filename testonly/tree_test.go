@@ -17,7 +17,7 @@ package testonly
 import (
 	"bytes"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"strconv"
 	"testing"
 
@@ -140,11 +140,11 @@ func TestTreeConsistencyProof(t *testing.T) {
 func TestTreeConsistencyProofFuzz(t *testing.T) {
 	entries := genEntries(256)
 
-	for treeSize := int64(1); treeSize <= 256; treeSize++ {
+	for treeSize := uint64(1); treeSize <= 256; treeSize++ {
 		mt := newTree(entries[:treeSize])
 		for i := 0; i < 8; i++ {
-			size2 := uint64(rand.Int63n(treeSize + 1))
-			size1 := uint64(rand.Int63n(int64(size2) + 1))
+			size2 := rand.Uint64N(treeSize + 1)
+			size1 := rand.Uint64N(size2 + 1)
 
 			got, err := mt.ConsistencyProof(size1, size2)
 			if err != nil {
