@@ -43,7 +43,6 @@ var (
 	sha256EmptyTreeHash = dh("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", 32)
 
 	inclusionProofs = []inclusionProofTestVector{
-		{0, 0, nil},
 		{1, 1, nil},
 		{1, 8, [][]byte{
 			dh("96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7", 32),
@@ -316,9 +315,7 @@ func TestVerifyInclusion(t *testing.T) {
 		})
 	}
 
-	// i = 0 is an invalid path.
-	for i := 1; i < 6; i++ {
-		p := inclusionProofs[i]
+	for i, p := range inclusionProofs {
 		t.Run(fmt.Sprintf("proof:%d", i), func(t *testing.T) {
 			leafHash := rfc6962.DefaultHasher.HashLeaf(leaves[p.leaf-1])
 			if err := verifierCheck(hasher, p.leaf-1, p.size, p.proof, roots[p.size-1], leafHash); err != nil {
