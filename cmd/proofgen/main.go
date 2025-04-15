@@ -111,9 +111,9 @@ type inclusionProbe struct {
 func writeInclusionTestData(rootDirectory string) error {
 	for i, p := range inclusionProofs {
 		directory := filepath.Join(rootDirectory, strconv.Itoa(i))
-		err := os.MkdirAll(directory, 0755)
-		if err != nil && !os.IsExist(err) {
-			log.Fatal(err)
+		err := createDirectory(directory)
+		if err != nil {
+			return err
 		}
 
 		leafHash := rfc6962.DefaultHasher.HashLeaf(leaves[p.leaf-1])
@@ -123,9 +123,9 @@ func writeInclusionTestData(rootDirectory string) error {
 	}
 
 	staticDirectory := filepath.Join(rootDirectory, "additional")
-	err := os.MkdirAll(staticDirectory, 0755)
-	if err != nil && !os.IsExist(err) {
-		log.Fatal(err)
+	err := createDirectory(staticDirectory)
+	if err != nil {
+		return err
 	}
 
 	err = writeStaticInclusionTestData(staticDirectory)
@@ -134,9 +134,9 @@ func writeInclusionTestData(rootDirectory string) error {
 	}
 
 	singleEntryDirectory := filepath.Join(rootDirectory, "single-entry")
-	err = os.MkdirAll(singleEntryDirectory, 0755)
-	if err != nil && !os.IsExist(err) {
-		log.Fatal(err)
+	err = createDirectory(singleEntryDirectory)
+	if err != nil {
+		return err
 	}
 
 	err = writeSingleEntryInclusionTestData(singleEntryDirectory)
@@ -298,10 +298,11 @@ type consistencyProbe struct {
 func writeConsistencyTestData(rootDirectory string) error {
 	for i, p := range consistencyProofs {
 		directory := filepath.Join(rootDirectory, strconv.Itoa(i))
-		err := os.MkdirAll(directory, 0755)
-		if err != nil && !os.IsExist(err) {
-			log.Fatal(err)
+		err := createDirectory(directory)
+		if err != nil {
+			return err
 		}
+
 		err = writeCorruptedConsistencyTestData(directory, p.size1, p.size2, p.proof,
 			roots[p.size1-1], roots[p.size2-1])
 		if err != nil {
@@ -310,9 +311,9 @@ func writeConsistencyTestData(rootDirectory string) error {
 	}
 
 	staticDirectory := filepath.Join(rootDirectory, "additional")
-	err := os.MkdirAll(staticDirectory, 0755)
-	if err != nil && !os.IsExist(err) {
-		log.Fatal(err)
+	err := createDirectory(staticDirectory)
+	if err != nil {
+		return err
 	}
 
 	err = writeStaticConsistencyTestData(staticDirectory)
@@ -462,6 +463,15 @@ func dh(h string, expLen int) []byte {
 		panic(fmt.Sprintf("decode %q: len=%d, want %d", h, got, expLen))
 	}
 	return r
+}
+
+func createDirectory(directory string) error {
+	err := os.MkdirAll(directory, 0755)
+	if err != nil && !os.IsExist(err) {
+		return err
+	}
+
+	return nil
 }
 
 func main() {
