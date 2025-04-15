@@ -1,4 +1,4 @@
-// Copyright 2017 Google LLC. All Rights Reserved.
+// Copyright 2025 Google LLC. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -55,55 +55,6 @@ type consistencyProbe struct {
 	WantError bool   `json:"wantErr"`
 }
 
-//	func verifierCheck(hasher merkle.LogHasher, proof proofgen.inclusionProof) error {
-//		// Verify original inclusion proof.
-//		got, err := RootFromInclusionProof(hasher, leafIndex, treeSize, leafHash, proof)
-//		if err != nil {
-//			return err
-//		}
-//		if !bytes.Equal(got, root) {
-//			return fmt.Errorf("got root:\n%x\nexpected:\n%x", got, root)
-//		}
-//		if err := VerifyInclusion(hasher, leafIndex, treeSize, leafHash, proof, root); err != nil {
-//			return err
-//		}
-//
-//		probes := corruptInclusionProof(leafIndex, treeSize, proof, root, leafHash)
-//		var wrong []string
-//		for _, p := range probes {
-//			if err := VerifyInclusion(hasher, p.leafIndex, p.treeSize, p.leafHash, p.proof, p.root); err == nil {
-//				wrong = append(wrong, p.desc)
-//			}
-//		}
-//		if len(wrong) > 0 {
-//			return fmt.Errorf("incorrectly verified against: %s", strings.Join(wrong, ", "))
-//		}
-//		return nil
-//	}
-//
-//	func verifierConsistencyCheck(hasher merkle.LogHasher, size1, size2 uint64, proof [][]byte, root1, root2 []byte) error {
-//		// Verify original consistency proof.
-//		if err := VerifyConsistency(hasher, size1, size2, proof, root1, root2); err != nil {
-//			return err
-//		}
-//		// For simplicity test only non-trivial proofs that have root1 != root2,
-//		// size1 != 0 and size1 != size2.
-//		if len(proof) == 0 {
-//			return nil
-//		}
-//
-//		probes := corruptConsistencyProof(size1, size2, root1, root2, proof)
-//		var wrong []string
-//		for _, p := range probes {
-//			if err := VerifyConsistency(hasher, p.size1, p.size2, p.proof, p.root1, p.root2); err == nil {
-//				wrong = append(wrong, p.desc)
-//			}
-//		}
-//		if len(wrong) > 0 {
-//			return fmt.Errorf("incorrectly verified against: %s", strings.Join(wrong, ", "))
-//		}
-//		return nil
-//	}
 func TestVerifyInclusionProbes(t *testing.T) {
 	var probes []inclusionProbe
 	root := "testdata/inclusion"
