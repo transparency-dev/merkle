@@ -251,15 +251,21 @@ func writeSingleEntryInclusionTestData(directory string) error {
 	return nil
 }
 
-func writeStaticInclusionTestData(directory string) error {
+func writeStaticInclusionTestData(rootDirectory string) error {
 	proof := [][]byte{}
 
 	probes := []struct {
 		index, size uint64
 	}{{0, 0}, {0, 1}, {1, 0}, {2, 1}}
-	for _, p := range probes {
+	for i, p := range probes {
+		directory := filepath.Join(rootDirectory, strconv.Itoa(i))
+		err := createDirectory(directory)
+		if err != nil {
+			return err
+		}
+
 		randomLeaf := inclusionProbe{p.index, p.size, []byte{}, sha256SomeHash, proof, "random leaf", true}
-		err := writeInclusionProbe(directory, randomLeaf)
+		err = writeInclusionProbe(directory, randomLeaf)
 		if err != nil {
 			return err
 		}
