@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -107,16 +108,43 @@ type inclusionProbe struct {
 	WantError bool   `json:"wantErr"`
 }
 
-// consistencyProbe is a parameter set for consistency proof verification.
-type consistencyProbe struct {
-	Size1 uint64   `json:"size1"`
-	Size2 uint64   `json:"size2"`
-	Root1 []byte   `json:"root1"`
-	Root2 []byte   `json:"root2"`
-	Proof [][]byte `json:"proof"`
+func writeInclusionTestData(rootDirectory string) error {
+	for i, p := range inclusionProofs {
+		directory := filepath.Join(rootDirectory, strconv.Itoa(i))
+		err := os.MkdirAll(directory, 0755)
+		if err != nil && !os.IsExist(err) {
+			log.Fatal(err)
+		}
 
-	Desc      string `json:"desc"`
-	WantError bool   `json:"wantErr"`
+		leafHash := rfc6962.DefaultHasher.HashLeaf(leaves[p.leaf-1])
+		if err = writeCorruptedInclusionTestData(directory, p.leaf-1, p.size, p.proof, roots[p.size-1], leafHash); err != nil {
+			log.Fatal("Failed to write inclusion test data: %s", err)
+		}
+	}
+
+	staticDirectory := filepath.Join(rootDirectory, "additional")
+	err := os.MkdirAll(staticDirectory, 0755)
+	if err != nil && !os.IsExist(err) {
+		log.Fatal(err)
+	}
+
+	err = writeStaticInclusionTestData(staticDirectory)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	singleEntryDirectory := filepath.Join(rootDirectory, "single-entry")
+	err = os.MkdirAll(singleEntryDirectory, 0755)
+	if err != nil && !os.IsExist(err) {
+		log.Fatal(err)
+	}
+
+	err = writeSingleEntryInclusionTestData(singleEntryDirectory)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return nil
 }
 
 func corruptInclusionProof(leafIndex, treeSize uint64, proof [][]byte, root, leafHash []byte) []inclusionProbe {
@@ -161,51 +189,7 @@ func corruptInclusionProof(leafIndex, treeSize uint64, proof [][]byte, root, lea
 	return ret
 }
 
-func corruptConsistencyProof(size1, size2 uint64, root1, root2 []byte, proof [][]byte) []consistencyProbe {
-	ln := len(proof)
-	ret := []consistencyProbe{
-		// Wrong size1.
-		{size1 - 1, size2, root1, root2, proof, "size1 - 1", true},
-		{size1 + 1, size2, root1, root2, proof, "size1 + 1", true},
-		{size1 ^ 2, size2, root1, root2, proof, "size1 ^ 2", true},
-		// Wrong tree height.
-		{size1, size2 * 2, root1, root2, proof, "size2 * 2", true},
-		{size1, size2 / 2, root1, root2, proof, "size2 div 2", true},
-		// Wrong root.
-		{size1, size2, []byte("WrongRoot"), root2, proof, "wrong root1", true},
-		{size1, size2, root1, []byte("WrongRoot"), proof, "wrong root2", true},
-		{size1, size2, root2, root1, proof, "swapped roots", true},
-		// Empty proof.
-		{size1, size2, root1, root2, [][]byte{}, "empty proof", true},
-		// Add garbage at the end.
-		{size1, size2, root1, root2, extend(proof, []byte{}), "trailing garbage", true},
-		{size1, size2, root1, root2, extend(proof, root1), "trailing root1", true},
-		{size1, size2, root1, root2, extend(proof, root2), "trailing root2", true},
-		// Add garbage at the front.
-		{size1, size2, root1, root2, prepend(proof, []byte{}), "preceding garbage", true},
-		{size1, size2, root1, root2, prepend(proof, root1), "preceding root1", true},
-		{size1, size2, root1, root2, prepend(proof, root2), "preceding root2", true},
-		{size1, size2, root1, root2, prepend(proof, proof[0]), "preceding proof[0]", true},
-	}
-
-	// Remove a node from the end.
-	if ln > 0 {
-		ret = append(ret, consistencyProbe{size1, size2, root1, root2, proof[:ln-1], "truncated proof", true})
-	}
-
-	// Modify single bit in an element of the proof.
-	for i := 0; i < ln; i++ {
-		wrongProof := prepend(proof)                          // Copy the proof slice.
-		wrongProof[i] = append([]byte(nil), wrongProof[i]...) // But also the modified data.
-		wrongProof[i][0] ^= 16                                // Flip the bit.
-		desc := fmt.Sprintf("modified proof[%d] bit 4", i)
-		ret = append(ret, consistencyProbe{size1, size2, root1, root2, wrongProof, desc, true})
-	}
-
-	return ret
-}
-
-func writeInclusionTestData(directory string, leafIndex, treeSize uint64, proof [][]byte, root, leafHash []byte) error {
+func writeCorruptedInclusionTestData(directory string, leafIndex, treeSize uint64, proof [][]byte, root, leafHash []byte) error {
 	happyPath := inclusionProbe{leafIndex, treeSize, root, leafHash, proof, "happy path", false}
 	err := writeInclusionProbe(directory, happyPath)
 	if err != nil {
@@ -223,37 +207,7 @@ func writeInclusionTestData(directory string, leafIndex, treeSize uint64, proof 
 	return nil
 }
 
-func writeConsistencyTestData(directory string, size1, size2 uint64, proof [][]byte, root1, root2 []byte) error {
-	happyPath := consistencyProbe{size1, size2, root1, root2, proof, "happy path", false}
-	err := writeConsistencyProbe(directory, happyPath)
-	if err != nil {
-		return err
-	}
-
-	// For simplicity test only non-trivial proofs that have root1 != root2,
-	// size1 != 0 and size1 != size2.
-	if len(proof) == 0 {
-		return nil
-	}
-
-	probes := corruptConsistencyProof(size1, size2, root1, root2, proof)
-	for _, p := range probes {
-		fileName := strings.Replace(p.Desc, " ", "-", -1) + ".json"
-		probeJson, err := json.Marshal(p)
-		if err != nil {
-			return fmt.Errorf("Error marshaling consistency probe: %s", err)
-		}
-
-		err = os.WriteFile(directory+fileName, probeJson, 0644)
-		if err != nil {
-			return fmt.Errorf("Error writing consistency probe: %s: %s", fileName, err)
-		}
-	}
-
-	return nil
-}
-
-func writeSingleEntryInclusionProbes(directory string) error {
+func writeSingleEntryInclusionTestData(directory string) error {
 	data := []byte("data")
 	// Root and leaf hash for 1-entry tree are the same.
 	hash := hasher.HashLeaf(data)
@@ -312,6 +266,128 @@ func writeStaticInclusionTestData(directory string) error {
 	return nil
 }
 
+func writeInclusionProbe(directory string, probe inclusionProbe) error {
+	fileName := strings.Replace(probe.Desc, " ", "-", -1) + ".json"
+
+	probeJson, err := json.Marshal(probe)
+	if err != nil {
+		return fmt.Errorf("Error marshaling probe: %s", err)
+	}
+
+	fileLocation := filepath.Join(directory, fileName)
+	err = os.WriteFile(fileLocation, probeJson, 0644)
+	if err != nil {
+		return fmt.Errorf("Error writing probe: %s: %s", fileName, err)
+	}
+
+	return nil
+}
+
+// consistencyProbe is a parameter set for consistency proof verification.
+type consistencyProbe struct {
+	Size1 uint64   `json:"size1"`
+	Size2 uint64   `json:"size2"`
+	Root1 []byte   `json:"root1"`
+	Root2 []byte   `json:"root2"`
+	Proof [][]byte `json:"proof"`
+
+	Desc      string `json:"desc"`
+	WantError bool   `json:"wantErr"`
+}
+
+func writeConsistencyTestData(rootDirectory string) error {
+	for i, p := range consistencyProofs {
+		directory := filepath.Join(rootDirectory, strconv.Itoa(i))
+		err := os.MkdirAll(directory, 0755)
+		if err != nil && !os.IsExist(err) {
+			log.Fatal(err)
+		}
+		err = writeCorruptedConsistencyTestData(directory, p.size1, p.size2, p.proof,
+			roots[p.size1-1], roots[p.size2-1])
+		if err != nil {
+			log.Fatal("Failed to write consistency test data: %s", err)
+		}
+	}
+
+	staticDirectory := filepath.Join(rootDirectory, "additional")
+	err := os.MkdirAll(staticDirectory, 0755)
+	if err != nil && !os.IsExist(err) {
+		log.Fatal(err)
+	}
+
+	err = writeStaticConsistencyTestData(staticDirectory)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return nil
+}
+
+func corruptConsistencyProof(size1, size2 uint64, root1, root2 []byte, proof [][]byte) []consistencyProbe {
+	ln := len(proof)
+	ret := []consistencyProbe{
+		// Wrong size1.
+		{size1 - 1, size2, root1, root2, proof, "size1 - 1", true},
+		{size1 + 1, size2, root1, root2, proof, "size1 + 1", true},
+		{size1 ^ 2, size2, root1, root2, proof, "size1 ^ 2", true},
+		// Wrong tree height.
+		{size1, size2 * 2, root1, root2, proof, "size2 * 2", true},
+		{size1, size2 / 2, root1, root2, proof, "size2 div 2", true},
+		// Wrong root.
+		{size1, size2, []byte("WrongRoot"), root2, proof, "wrong root1", true},
+		{size1, size2, root1, []byte("WrongRoot"), proof, "wrong root2", true},
+		{size1, size2, root2, root1, proof, "swapped roots", true},
+		// Empty proof.
+		{size1, size2, root1, root2, [][]byte{}, "empty proof", true},
+		// Add garbage at the end.
+		{size1, size2, root1, root2, extend(proof, []byte{}), "trailing garbage", true},
+		{size1, size2, root1, root2, extend(proof, root1), "trailing root1", true},
+		{size1, size2, root1, root2, extend(proof, root2), "trailing root2", true},
+		// Add garbage at the front.
+		{size1, size2, root1, root2, prepend(proof, []byte{}), "preceding garbage", true},
+		{size1, size2, root1, root2, prepend(proof, root1), "preceding root1", true},
+		{size1, size2, root1, root2, prepend(proof, root2), "preceding root2", true},
+		{size1, size2, root1, root2, prepend(proof, proof[0]), "preceding proof[0]", true},
+	}
+
+	// Remove a node from the end.
+	if ln > 0 {
+		ret = append(ret, consistencyProbe{size1, size2, root1, root2, proof[:ln-1], "truncated proof", true})
+	}
+
+	// Modify single bit in an element of the proof.
+	for i := 0; i < ln; i++ {
+		wrongProof := prepend(proof)                          // Copy the proof slice.
+		wrongProof[i] = append([]byte(nil), wrongProof[i]...) // But also the modified data.
+		wrongProof[i][0] ^= 16                                // Flip the bit.
+		desc := fmt.Sprintf("modified proof[%d] bit 4", i)
+		ret = append(ret, consistencyProbe{size1, size2, root1, root2, wrongProof, desc, true})
+	}
+
+	return ret
+}
+
+func writeCorruptedConsistencyTestData(directory string, size1, size2 uint64, proof [][]byte, root1, root2 []byte) error {
+	happyPath := consistencyProbe{size1, size2, root1, root2, proof, "happy path", false}
+	err := writeConsistencyProbe(directory, happyPath)
+	if err != nil {
+		return err
+	}
+
+	// For simplicity test only non-trivial proofs that have root1 != root2,
+	// size1 != 0 and size1 != size2.
+	if len(proof) == 0 {
+		return nil
+	}
+
+	probes := corruptConsistencyProof(size1, size2, root1, root2, proof)
+	for _, p := range probes {
+		writeConsistencyProbe(directory, p)
+	}
+
+	return nil
+}
+
 func writeStaticConsistencyTestData(directory string) error {
 	root1 := []byte("don't care 1")
 	root2 := []byte("don't care 2")
@@ -348,22 +424,6 @@ func writeStaticConsistencyTestData(directory string) error {
 	return nil
 }
 
-func writeInclusionProbe(directory string, probe inclusionProbe) error {
-	fileName := strings.Replace(probe.Desc, " ", "-", -1) + ".json"
-
-	probeJson, err := json.Marshal(probe)
-	if err != nil {
-		return fmt.Errorf("Error marshaling probe: %s", err)
-	}
-
-	err = os.WriteFile(directory+fileName, probeJson, 0644)
-	if err != nil {
-		return fmt.Errorf("Error writing probe: %s: %s", fileName, err)
-	}
-
-	return nil
-}
-
 func writeConsistencyProbe(directory string, probe consistencyProbe) error {
 	fileName := strings.Replace(probe.Desc, " ", "-", -1) + ".json"
 
@@ -372,7 +432,8 @@ func writeConsistencyProbe(directory string, probe consistencyProbe) error {
 		return fmt.Errorf("Error marshaling probe: %s", err)
 	}
 
-	err = os.WriteFile(directory+fileName, probeJson, 0644)
+	fileLocation := filepath.Join(directory, fileName)
+	err = os.WriteFile(fileLocation, probeJson, 0644)
 	if err != nil {
 		return fmt.Errorf("Error writing probe: %s: %s", fileName, err)
 	}
@@ -404,50 +465,14 @@ func dh(h string, expLen int) []byte {
 }
 
 func main() {
-	for i, p := range inclusionProofs {
-		directory := "testdata/inclusion/" + strconv.Itoa(i) + "/"
-		err := os.MkdirAll(directory, 0755)
-		if err != nil && !os.IsExist(err) {
-			log.Fatal(err)
-		}
-
-		leafHash := rfc6962.DefaultHasher.HashLeaf(leaves[p.leaf-1])
-		if err = writeInclusionTestData(directory, p.leaf-1, p.size, p.proof, roots[p.size-1], leafHash); err != nil {
-			log.Fatal("Failed to write inclusion test data: %s", err)
-		}
-	}
-
-	directory := "testdata/inclusion/single/"
-	err := os.MkdirAll(directory, 0755)
-	if err != nil && !os.IsExist(err) {
-		log.Fatal(err)
-	}
-
-	err = writeSingleEntryInclusionProbes(directory)
+	inclusionDirectory := "testdata/inclusion"
+	err := writeInclusionTestData(inclusionDirectory)
 	if err != nil {
-		log.Fatal("Failed to write single inclusion probes: %s", err)
-	}
-
-	for i, p := range consistencyProofs {
-		directory := "testdata/consistency/" + strconv.Itoa(i) + "/"
-		err := os.MkdirAll(directory, 0755)
-		if err != nil && !os.IsExist(err) {
-			log.Fatal(err)
-		}
-		err = writeConsistencyTestData(directory, p.size1, p.size2, p.proof,
-			roots[p.size1-1], roots[p.size2-1])
-		if err != nil {
-			log.Fatal("Failed to write consistency test data: %s", err)
-		}
-	}
-
-	directory = "testdata/consistency/additional/"
-	err = os.MkdirAll(directory, 0755)
-	if err != nil && !os.IsExist(err) {
 		log.Fatal(err)
 	}
 
-	err = writeStaticConsistencyTestData(directory)
+	consistencyDirectory := "testdata/consistency"
+	err = writeConsistencyTestData(consistencyDirectory)
 	if err != nil {
 		log.Fatal(err)
 	}
