@@ -410,6 +410,8 @@ func writeStaticConsistencyTestData(directory string) error {
 	proof2 := [][]byte{sha256EmptyTreeHash}
 
 	tests := []consistencyProbe{
+		{0, 0, root1, root2, proof1, "sizes are equal (zero) but roots are not", true},
+		{1, 1, root1, root2, proof1, "sizes are equal (one) but roots are not", true},
 		// Sizes that are always consistent.
 		{0, 0, root1, root1, proof1, "sizes are equal and proof is not empty where both sizes are zero", false},
 		{0, 1, root1, root2, proof1, "size1 is zero and does not equal size2", true},
