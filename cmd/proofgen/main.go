@@ -155,7 +155,7 @@ func writeInclusionTestData(rootDirectory string) error {
 	return nil
 }
 
-func corruptInclusionProof(leafIdx, treeSize uint64, proof [][]byte, root, leafHash []byte) []inclusionProbe {
+func invalidInclusionProof(leafIdx, treeSize uint64, proof [][]byte, root, leafHash []byte) []inclusionProbe {
 	ret := []inclusionProbe{
 		// Wrong leaf index.
 		{leafIdx - 1, treeSize, root, leafHash, proof, "leafIdx - 1", true},
@@ -203,7 +203,7 @@ func writeCorruptedInclusionTestData(directory string, leafIdx, treeSize uint64,
 		return nil
 	}
 
-	probes := corruptInclusionProof(leafIdx, treeSize, proof, root, leafHash)
+	probes := invalidInclusionProof(leafIdx, treeSize, proof, root, leafHash)
 	for _, p := range probes {
 		if err := writeInclusionProbe(directory, p); err != nil {
 			return err
@@ -327,7 +327,7 @@ func writeConsistencyTestData(rootDirectory string) error {
 	return nil
 }
 
-func corruptConsistencyProof(size1, size2 uint64, root1, root2 []byte, proof [][]byte) []consistencyProbe {
+func invalidConsistencyProof(size1, size2 uint64, root1, root2 []byte, proof [][]byte) []consistencyProbe {
 	ln := len(proof)
 	ret := []consistencyProbe{
 		// Wrong size1.
@@ -383,7 +383,7 @@ func writeCorruptedConsistencyTestData(directory string, size1, size2 uint64, pr
 		return nil
 	}
 
-	probes := corruptConsistencyProof(size1, size2, root1, root2, proof)
+	probes := invalidConsistencyProof(size1, size2, root1, root2, proof)
 	for _, p := range probes {
 		writeConsistencyProbe(directory, p)
 	}
