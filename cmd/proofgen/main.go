@@ -158,12 +158,12 @@ func inclusionProbes(rootDir string) error {
 func invalidInclusionProof(leafIdx, treeSize uint64, proof [][]byte, root, leafHash []byte) []inclusionProbe {
 	ret := []inclusionProbe{
 		// Wrong leaf index.
-		{leafIdx - 1, treeSize, root, leafHash, proof, "leafIdx - 1", true},
-		{leafIdx + 1, treeSize, root, leafHash, proof, "leafIdx + 1", true},
-		{leafIdx ^ 2, treeSize, root, leafHash, proof, "leafIdx ^ 2", true},
+		{leafIdx - 1, treeSize, root, leafHash, proof, "leafIdx sub @1", true},
+		{leafIdx + 1, treeSize, root, leafHash, proof, "leafIdx plus @1", true},
+		{leafIdx ^ 2, treeSize, root, leafHash, proof, "leafIdx XOR @2", true},
 		// Wrong tree height.
-		{leafIdx, treeSize * 2, root, leafHash, proof, "treeSize * 2", true},
-		{leafIdx, treeSize / 2, root, leafHash, proof, "treeSize div 2", true},
+		{leafIdx, treeSize * 2, root, leafHash, proof, "treeSize mul @2", true},
+		{leafIdx, treeSize / 2, root, leafHash, proof, "treeSize div @2", true},
 		// Wrong leaf or root.
 		{leafIdx, treeSize, root, []byte("WrongLeaf"), proof, "wrong leaf", true},
 		{leafIdx, treeSize, sha256EmptyTreeHash, leafHash, proof, "empty root", true},
@@ -182,7 +182,7 @@ func invalidInclusionProof(leafIdx, treeSize uint64, proof [][]byte, root, leafH
 		wrongProof := prepend(proof)                          // Copy the proof slice.
 		wrongProof[i] = append([]byte(nil), wrongProof[i]...) // But also the modified data.
 		wrongProof[i][0] ^= 8                                 // Flip the bit.
-		desc := fmt.Sprintf("modified proof[%d] bit 3", i)
+		desc := fmt.Sprintf("modified proof[%d] bit @3", i)
 		ret = append(ret, inclusionProbe{leafIdx, treeSize, root, leafHash, wrongProof, desc, true})
 	}
 
@@ -331,12 +331,12 @@ func invalidConsistencyProof(size1, size2 uint64, root1, root2 []byte, proof [][
 	ln := len(proof)
 	ret := []consistencyProbe{
 		// Wrong size1.
-		{size1 - 1, size2, root1, root2, proof, "size1 - 1", true},
-		{size1 + 1, size2, root1, root2, proof, "size1 + 1", true},
-		{size1 ^ 2, size2, root1, root2, proof, "size1 ^ 2", true},
+		{size1 - 1, size2, root1, root2, proof, "size1 sub @1", true},
+		{size1 + 1, size2, root1, root2, proof, "size1 plus @1", true},
+		{size1 ^ 2, size2, root1, root2, proof, "size1 XOR @2", true},
 		// Wrong tree height.
-		{size1, size2 * 2, root1, root2, proof, "size2 * 2", true},
-		{size1, size2 / 2, root1, root2, proof, "size2 div 2", true},
+		{size1, size2 * 2, root1, root2, proof, "size2 mul @2", true},
+		{size1, size2 / 2, root1, root2, proof, "size2 div @2", true},
 		// Wrong root.
 		{size1, size2, []byte("WrongRoot"), root2, proof, "wrong root1", true},
 		{size1, size2, root1, []byte("WrongRoot"), proof, "wrong root2", true},
@@ -351,7 +351,7 @@ func invalidConsistencyProof(size1, size2 uint64, root1, root2 []byte, proof [][
 		{size1, size2, root1, root2, prepend(proof, []byte{}), "preceding garbage", true},
 		{size1, size2, root1, root2, prepend(proof, root1), "preceding root1", true},
 		{size1, size2, root1, root2, prepend(proof, root2), "preceding root2", true},
-		{size1, size2, root1, root2, prepend(proof, proof[0]), "preceding proof[0]", true},
+		{size1, size2, root1, root2, prepend(proof, proof[0]), "preceding proof @0", true},
 	}
 
 	// Remove a node from the end.
@@ -364,7 +364,7 @@ func invalidConsistencyProof(size1, size2 uint64, root1, root2 []byte, proof [][
 		wrongProof := prepend(proof)                          // Copy the proof slice.
 		wrongProof[i] = append([]byte(nil), wrongProof[i]...) // But also the modified data.
 		wrongProof[i][0] ^= 16                                // Flip the bit.
-		desc := fmt.Sprintf("modified proof[%d] bit 4", i)
+		desc := fmt.Sprintf("modified proof@%d bit @4", i)
 		ret = append(ret, consistencyProbe{size1, size2, root1, root2, wrongProof, desc, true})
 	}
 
