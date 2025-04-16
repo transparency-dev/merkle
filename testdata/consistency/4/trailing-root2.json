@@ -1,1 +1,14 @@
-{"size1":6,"size2":7,"root1":"duZ9rbzfHhDht03cYIq9L5jfsW+851J3tSMqEn8gh+8=","root2":"3bib5AOAnjJXUNPSY814kpwpQreUKjS3fhIslZSnTIw=","proof":["DrxdNDf74tsVi58Sah0RjjCBgQMdCpSfje3t68VY72o=","sIaT7C5yFZcTBkHoIR5+7cy0wmQTlj7ubB4u0W/7Gl8=","037kGJdt2VdTwcc4Yrk5j6Kiz5tP8P3+izDNlSCWFLc=","3bib5AOAnjJXUNPSY814kpwpQreUKjS3fhIslZSnTIw="],"desc":"trailing root2","wantErr":true}
+{
+  "size1": 6,
+  "size2": 7,
+  "root1": "duZ9rbzfHhDht03cYIq9L5jfsW+851J3tSMqEn8gh+8=",
+  "root2": "3bib5AOAnjJXUNPSY814kpwpQreUKjS3fhIslZSnTIw=",
+  "proof": [
+    "DrxdNDf74tsVi58Sah0RjjCBgQMdCpSfje3t68VY72o=",
+    "sIaT7C5yFZcTBkHoIR5+7cy0wmQTlj7ubB4u0W/7Gl8=",
+    "037kGJdt2VdTwcc4Yrk5j6Kiz5tP8P3+izDNlSCWFLc=",
+    "3bib5AOAnjJXUNPSY814kpwpQreUKjS3fhIslZSnTIw="
+  ],
+  "desc": "trailing root2",
+  "wantErr": true
+}

@@ -1,1 +1,9 @@
-{"leafIdx":2,"treeSize":1,"root":"","leafHash":"q6yroAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAGHgASNFY=","proof":[],"desc":"random leaf","wantErr":true}
+{
+  "leafIdx": 2,
+  "treeSize": 1,
+  "root": "",
+  "leafHash": "q6yroAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAGHgASNFY=",
+  "proof": [],
+  "desc": "random leaf",
+  "wantErr": true
+}

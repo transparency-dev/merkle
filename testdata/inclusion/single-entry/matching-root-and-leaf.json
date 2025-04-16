@@ -1,1 +1,9 @@
-{"leafIdx":0,"treeSize":1,"root":"DTrtAjFI/9KiWfvQzcf7PPl1ZYdg03dbgq9vkKrMLfw=","leafHash":"DTrtAjFI/9KiWfvQzcf7PPl1ZYdg03dbgq9vkKrMLfw=","proof":[],"desc":"matching root and leaf","wantErr":false}
+{
+  "leafIdx": 0,
+  "treeSize": 1,
+  "root": "DTrtAjFI/9KiWfvQzcf7PPl1ZYdg03dbgq9vkKrMLfw=",
+  "leafHash": "DTrtAjFI/9KiWfvQzcf7PPl1ZYdg03dbgq9vkKrMLfw=",
+  "proof": [],
+  "desc": "matching root and leaf",
+  "wantErr": false
+}

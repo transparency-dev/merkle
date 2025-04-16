@@ -1,1 +1,9 @@
-{"size1":1,"size2":2,"root1":"ZG9uJ3QgY2FyZSAx","root2":"ZG9uJ3QgY2FyZSAy","proof":[],"desc":"sizes do not watch and proof is empty","wantErr":true}
+{
+  "size1": 1,
+  "size2": 2,
+  "root1": "ZG9uJ3QgY2FyZSAx",
+  "root2": "ZG9uJ3QgY2FyZSAy",
+  "proof": [],
+  "desc": "sizes do not watch and proof is empty",
+  "wantErr": true
+}

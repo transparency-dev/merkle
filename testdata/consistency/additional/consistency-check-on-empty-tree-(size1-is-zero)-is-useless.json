@@ -1,1 +1,11 @@
-{"size1":0,"size2":1,"root1":"47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=","root2":"47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=","proof":["47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="],"desc":"consistency check on empty tree (size1 is zero) is useless","wantErr":true}
+{
+  "size1": 0,
+  "size2": 1,
+  "root1": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+  "root2": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+  "proof": [
+    "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
+  ],
+  "desc": "consistency check on empty tree (size1 is zero) is useless",
+  "wantErr": true
+}

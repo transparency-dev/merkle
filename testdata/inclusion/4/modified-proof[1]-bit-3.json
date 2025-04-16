@@ -1,1 +1,13 @@
-{"leafIdx":1,"treeSize":5,"root":"Tju7H3tHjc/nH7YxYxUZo7yhLJrvyhYSv85ME6hiZNQ=","leafHash":"lqKW0iTyhcZ77pPDD4owkVfw2qNdxbh+QQt4YwoJz8c=","proof":["bjQLnP+zepicpUTmu3gKLHiQHT+zNzh2hRGjBhevoB0=","Vwg/ChozygdqlSeYMlgNs+DvRYS9/x9UyKNg9Q3jAx4=","vBoGQ7EuTS18d5GPROD095qDi2z57FtcKD4fTYhZnms="],"desc":"modified proof[1] bit 3","wantErr":true}
+{
+  "leafIdx": 1,
+  "treeSize": 5,
+  "root": "Tju7H3tHjc/nH7YxYxUZo7yhLJrvyhYSv85ME6hiZNQ=",
+  "leafHash": "lqKW0iTyhcZ77pPDD4owkVfw2qNdxbh+QQt4YwoJz8c=",
+  "proof": [
+    "bjQLnP+zepicpUTmu3gKLHiQHT+zNzh2hRGjBhevoB0=",
+    "Vwg/ChozygdqlSeYMlgNs+DvRYS9/x9UyKNg9Q3jAx4=",
+    "vBoGQ7EuTS18d5GPROD095qDi2z57FtcKD4fTYhZnms="
+  ],
+  "desc": "modified proof[1] bit 3",
+  "wantErr": true
+}

@@ -277,7 +277,7 @@ func writeStaticInclusionTestData(rootDirectory string) error {
 func writeInclusionProbe(directory string, probe inclusionProbe) error {
 	fileName := strings.Replace(probe.Desc, " ", "-", -1) + ".json"
 
-	probeJson, err := json.Marshal(probe)
+	probeJson, err := json.MarshalIndent(probe, "", "  ")
 	if err != nil {
 		return fmt.Errorf("Error marshaling probe: %s", err)
 	}
@@ -431,7 +431,7 @@ func writeStaticConsistencyTestData(directory string) error {
 func writeConsistencyProbe(directory string, probe consistencyProbe) error {
 	fileName := strings.Replace(probe.Desc, " ", "-", -1) + ".json"
 
-	probeJson, err := json.Marshal(probe)
+	probeJson, err := json.MarshalIndent(probe, "", "  ")
 	if err != nil {
 		return fmt.Errorf("Error marshaling probe: %s", err)
 	}
