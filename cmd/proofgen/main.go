@@ -125,37 +125,32 @@ type inclusionProbe struct {
 func writeInclusionTestData(rootDirectory string) error {
 	for i, p := range inclusionProofs {
 		directory := filepath.Join(rootDirectory, strconv.Itoa(i))
-		err := createDirectory(directory)
-		if err != nil {
+		if err := createDirectory(directory); err != nil {
 			return err
 		}
 
 		leafHash := rfc6962.DefaultHasher.HashLeaf(leaves[p.leaf-1])
-		if err = writeCorruptedInclusionTestData(directory, p.leaf-1, p.size, p.proof, roots[p.size-1], leafHash); err != nil {
-			log.Fatalf("Failed to write inclusion test data: %s", err)
+		if err := writeCorruptedInclusionTestData(directory, p.leaf-1, p.size, p.proof, roots[p.size-1], leafHash); err != nil {
+			return err
 		}
 	}
 
 	staticDirectory := filepath.Join(rootDirectory, "additional")
-	err := createDirectory(staticDirectory)
-	if err != nil {
+	if err := createDirectory(staticDirectory); err != nil {
 		return err
 	}
 
-	err = writeStaticInclusionTestData(staticDirectory)
-	if err != nil {
-		log.Fatal(err)
+	if err := writeStaticInclusionTestData(staticDirectory); err != nil {
+		return err
 	}
 
 	singleEntryDirectory := filepath.Join(rootDirectory, "single-entry")
-	err = createDirectory(singleEntryDirectory)
-	if err != nil {
+	if err := createDirectory(singleEntryDirectory); err != nil {
 		return err
 	}
 
-	err = writeSingleEntryInclusionTestData(singleEntryDirectory)
-	if err != nil {
-		log.Fatal(err)
+	if err := writeSingleEntryInclusionTestData(singleEntryDirectory); err != nil {
+		return err
 	}
 
 	return nil
@@ -205,15 +200,13 @@ func corruptInclusionProof(leafIndex, treeSize uint64, proof [][]byte, root, lea
 
 func writeCorruptedInclusionTestData(directory string, leafIndex, treeSize uint64, proof [][]byte, root, leafHash []byte) error {
 	happyPath := inclusionProbe{leafIndex, treeSize, root, leafHash, proof, "happy path", false}
-	err := writeInclusionProbe(directory, happyPath)
-	if err != nil {
+	if err := writeInclusionProbe(directory, happyPath); err != nil {
 		return nil
 	}
 
 	probes := corruptInclusionProof(leafIndex, treeSize, proof, root, leafHash)
 	for _, p := range probes {
-		err = writeInclusionProbe(directory, p)
-		if err != nil {
+		if err := writeInclusionProbe(directory, p); err != nil {
 			return err
 		}
 	}
@@ -242,8 +235,7 @@ func writeSingleEntryInclusionTestData(directory string) error {
 	} {
 		probe := inclusionProbe{0, 1, p.root, p.leaf, proof, p.desc, p.wantErr}
 
-		err := writeInclusionProbe(directory, probe)
-		if err != nil {
+		if err := writeInclusionProbe(directory, probe); err != nil {
 			return err
 		}
 	}
@@ -265,20 +257,17 @@ func writeStaticInclusionTestData(rootDirectory string) error {
 		}
 
 		randomLeaf := inclusionProbe{p.index, p.size, []byte{}, sha256SomeHash, proof, "random leaf", true}
-		err = writeInclusionProbe(directory, randomLeaf)
-		if err != nil {
+		if err := writeInclusionProbe(directory, randomLeaf); err != nil {
 			return err
 		}
 
 		emptyRoot := inclusionProbe{p.index, p.size, sha256EmptyTreeHash, []byte{}, proof, "empty root", true}
-		err = writeInclusionProbe(directory, emptyRoot)
-		if err != nil {
+		if err := writeInclusionProbe(directory, emptyRoot); err != nil {
 			return err
 		}
 
 		emptyRootRandomLeaf := inclusionProbe{p.index, p.size, sha256EmptyTreeHash, sha256SomeHash, proof, "empty root and random leaf", true}
-		err = writeInclusionProbe(directory, emptyRootRandomLeaf)
-		if err != nil {
+		if err := writeInclusionProbe(directory, emptyRootRandomLeaf); err != nil {
 			return err
 		}
 	}
@@ -295,8 +284,7 @@ func writeInclusionProbe(directory string, probe inclusionProbe) error {
 	}
 
 	fileLocation := filepath.Join(directory, fileName)
-	err = os.WriteFile(fileLocation, probeJson, 0644)
-	if err != nil {
+	if err := os.WriteFile(fileLocation, probeJson, 0644); err != nil {
 		return fmt.Errorf("Error writing probe: %s: %s", fileName, err)
 	}
 
@@ -318,27 +306,23 @@ type consistencyProbe struct {
 func writeConsistencyTestData(rootDirectory string) error {
 	for i, p := range consistencyProofs {
 		directory := filepath.Join(rootDirectory, strconv.Itoa(i))
-		err := createDirectory(directory)
-		if err != nil {
+		if err := createDirectory(directory); err != nil {
 			return err
 		}
 
-		err = writeCorruptedConsistencyTestData(directory, p.size1, p.size2, p.proof,
-			roots[p.size1-1], roots[p.size2-1])
-		if err != nil {
-			log.Fatalf("Failed to write consistency test data: %s", err)
+		if err := writeCorruptedConsistencyTestData(directory, p.size1, p.size2, p.proof,
+			roots[p.size1-1], roots[p.size2-1]); err != nil {
+			fmt.Errorf("Failed to write consistency test data: %s", err)
 		}
 	}
 
 	staticDirectory := filepath.Join(rootDirectory, "additional")
-	err := createDirectory(staticDirectory)
-	if err != nil {
+	if err := createDirectory(staticDirectory); err != nil {
 		return err
 	}
 
-	err = writeStaticConsistencyTestData(staticDirectory)
-	if err != nil {
-		log.Fatal(err)
+	if err := writeStaticConsistencyTestData(staticDirectory); err != nil {
+		return err
 	}
 
 	return nil
@@ -390,8 +374,7 @@ func corruptConsistencyProof(size1, size2 uint64, root1, root2 []byte, proof [][
 
 func writeCorruptedConsistencyTestData(directory string, size1, size2 uint64, proof [][]byte, root1, root2 []byte) error {
 	happyPath := consistencyProbe{size1, size2, root1, root2, proof, "happy path", false}
-	err := writeConsistencyProbe(directory, happyPath)
-	if err != nil {
+	if err := writeConsistencyProbe(directory, happyPath); err != nil {
 		return err
 	}
 
@@ -438,8 +421,7 @@ func writeStaticConsistencyTestData(directory string) error {
 	}
 
 	for _, p := range tests {
-		err := writeConsistencyProbe(directory, p)
-		if err != nil {
+		if err := writeConsistencyProbe(directory, p); err != nil {
 			return err
 		}
 	}
@@ -456,8 +438,7 @@ func writeConsistencyProbe(directory string, probe consistencyProbe) error {
 	}
 
 	fileLocation := filepath.Join(directory, fileName)
-	err = os.WriteFile(fileLocation, probeJson, 0644)
-	if err != nil {
+	if err := os.WriteFile(fileLocation, probeJson, 0644); err != nil {
 		return fmt.Errorf("Error writing probe: %s: %s", fileName, err)
 	}
 
@@ -479,17 +460,16 @@ func prepend(proof [][]byte, hashes ...[]byte) [][]byte {
 func dh(h string, expLen int) []byte {
 	r, err := hex.DecodeString(h)
 	if err != nil {
-		panic(err)
+		log.Fatalf("Error decoding input: %s", err)
 	}
 	if got := len(r); got != expLen {
-		panic(fmt.Sprintf("decode %q: len=%d, want %d", h, got, expLen))
+		log.Fatalf(fmt.Sprintf("decode %q: len=%d, want %d", h, got, expLen))
 	}
 	return r
 }
 
 func createDirectory(directory string) error {
-	err := os.MkdirAll(directory, 0755)
-	if err != nil && !os.IsExist(err) {
+	if err := os.MkdirAll(directory, 0755); err != nil && !os.IsExist(err) {
 		return err
 	}
 
@@ -498,14 +478,12 @@ func createDirectory(directory string) error {
 
 func main() {
 	inclusionDirectory := "testdata/inclusion"
-	err := writeInclusionTestData(inclusionDirectory)
-	if err != nil {
-		log.Fatal(err)
+	if err := writeInclusionTestData(inclusionDirectory); err != nil {
+		log.Fatalf("Error writing inclusion test data: %s", err)
 	}
 
 	consistencyDirectory := "testdata/consistency"
-	err = writeConsistencyTestData(consistencyDirectory)
-	if err != nil {
-		log.Fatal(err)
+	if err := writeConsistencyTestData(consistencyDirectory); err != nil {
+		log.Fatalf("Error writing consistency test data: %s", err)
 	}
 }

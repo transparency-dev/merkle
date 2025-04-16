@@ -57,7 +57,7 @@ type consistencyProbe struct {
 func TestVerifyInclusionProbes(t *testing.T) {
 	var probes []inclusionProbe
 
-	err := filepath.WalkDir("../testdata/inclusion", func(path string, d fs.DirEntry, err error) error {
+	if err := filepath.WalkDir("../testdata/inclusion", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -77,21 +77,19 @@ func TestVerifyInclusionProbes(t *testing.T) {
 
 		var probe inclusionProbe
 		if err := json.Unmarshal(data, &probe); err != nil {
-			return fmt.Errorf("error parsing inclusion probe json: %s", err)
+			return fmt.Errorf("failed to parse inclusion probe json: %s", err)
 		}
 
 		probes = append(probes, probe)
 
 		return nil
-	})
-
-	if err != nil {
+	}); err != nil {
 		t.Errorf("failed to read inclusion probes: %s", err)
 	}
 
 	var wrong []string
 	for _, p := range probes {
-		err = VerifyInclusion(hasher, p.LeafIndex, p.TreeSize, p.LeafHash, p.Proof, p.Root)
+		err := VerifyInclusion(hasher, p.LeafIndex, p.TreeSize, p.LeafHash, p.Proof, p.Root)
 		if p.WantError && err == nil {
 			wrong = append(wrong, fmt.Sprintf("expected error but didn't get one: %s", p.Desc))
 			continue
@@ -111,7 +109,7 @@ func TestVerifyInclusionProbes(t *testing.T) {
 func TestVerifyConsistencyProbes(t *testing.T) {
 	var probes []consistencyProbe
 
-	err := filepath.WalkDir("../testdata/consistency", func(path string, d fs.DirEntry, err error) error {
+	if err := filepath.WalkDir("../testdata/consistency", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -131,21 +129,19 @@ func TestVerifyConsistencyProbes(t *testing.T) {
 
 		var probe consistencyProbe
 		if err := json.Unmarshal(data, &probe); err != nil {
-			return fmt.Errorf("error parsing consistency probe json: %s", err)
+			return fmt.Errorf("failed to parse consistency probe json: %s", err)
 		}
 
 		probes = append(probes, probe)
 
 		return nil
-	})
-
-	if err != nil {
+	}); err != nil {
 		t.Errorf("failed to read consistency probes: %s", err)
 	}
 
 	var wrong []string
 	for _, p := range probes {
-		err = VerifyConsistency(hasher, p.Size1, p.Size2, p.Proof, p.Root1, p.Root2)
+		err := VerifyConsistency(hasher, p.Size1, p.Size2, p.Proof, p.Root1, p.Root2)
 		if p.WantError && err == nil {
 			wrong = append(wrong, fmt.Sprintf("expected error but didn't get one: %s", p.Desc))
 			continue
