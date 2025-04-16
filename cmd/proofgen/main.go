@@ -28,9 +28,9 @@ import (
 )
 
 type inclusionProofTestVector struct {
-	leaf  uint64
-	size  uint64
-	proof [][]byte
+	leafIdx uint64
+	size    uint64
+	proof   [][]byte
 }
 
 type consistencyTestVector struct {
@@ -125,18 +125,18 @@ type inclusionProbe struct {
 func writeInclusionTestData(rootDirectory string) error {
 	for i, p := range inclusionProofs {
 		directory := filepath.Join(rootDirectory, strconv.Itoa(i))
-		if err := createDirectory(directory); err != nil {
+		if err := os.MkdirAll(directory, 0755); err != nil {
 			return err
 		}
 
-		leafHash := rfc6962.DefaultHasher.HashLeaf(leaves[p.leaf-1])
-		if err := writeCorruptedInclusionTestData(directory, p.leaf-1, p.size, p.proof, roots[p.size-1], leafHash); err != nil {
+		leafHash := rfc6962.DefaultHasher.HashLeaf(leaves[p.leafIdx-1])
+		if err := writeCorruptedInclusionTestData(directory, p.leafIdx-1, p.size, p.proof, roots[p.size-1], leafHash); err != nil {
 			return err
 		}
 	}
 
 	staticDirectory := filepath.Join(rootDirectory, "additional")
-	if err := createDirectory(staticDirectory); err != nil {
+	if err := os.MkdirAll(staticDirectory, 0755); err != nil {
 		return err
 	}
 
@@ -145,7 +145,7 @@ func writeInclusionTestData(rootDirectory string) error {
 	}
 
 	singleEntryDirectory := filepath.Join(rootDirectory, "single-entry")
-	if err := createDirectory(singleEntryDirectory); err != nil {
+	if err := os.MkdirAll(singleEntryDirectory, 0755); err != nil {
 		return err
 	}
 
@@ -251,7 +251,7 @@ func writeStaticInclusionTestData(rootDirectory string) error {
 	}{{0, 0}, {0, 1}, {1, 0}, {2, 1}}
 	for i, p := range probes {
 		directory := filepath.Join(rootDirectory, strconv.Itoa(i))
-		err := createDirectory(directory)
+		err := os.MkdirAll(directory, 0755)
 		if err != nil {
 			return err
 		}
@@ -306,7 +306,7 @@ type consistencyProbe struct {
 func writeConsistencyTestData(rootDirectory string) error {
 	for i, p := range consistencyProofs {
 		directory := filepath.Join(rootDirectory, strconv.Itoa(i))
-		if err := createDirectory(directory); err != nil {
+		if err := os.MkdirAll(directory, 0755); err != nil {
 			return err
 		}
 
@@ -317,7 +317,7 @@ func writeConsistencyTestData(rootDirectory string) error {
 	}
 
 	staticDirectory := filepath.Join(rootDirectory, "additional")
-	if err := createDirectory(staticDirectory); err != nil {
+	if err := os.MkdirAll(staticDirectory, 0755); err != nil {
 		return err
 	}
 
@@ -466,14 +466,6 @@ func dh(h string, expLen int) []byte {
 		log.Fatalf(fmt.Sprintf("decode %q: len=%d, want %d", h, got, expLen))
 	}
 	return r
-}
-
-func createDirectory(directory string) error {
-	if err := os.MkdirAll(directory, 0755); err != nil && !os.IsExist(err) {
-		return err
-	}
-
-	return nil
 }
 
 func main() {
