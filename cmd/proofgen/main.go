@@ -112,11 +112,11 @@ var (
 
 // inclusionProbe is a parameter set for inclusion proof verification.
 type inclusionProbe struct {
-	LeafIndex uint64   `json:"leafIndex"`
-	TreeSize  uint64   `json:"treeSize"`
-	Root      []byte   `json:"root"`
-	LeafHash  []byte   `json:"leafHash"`
-	Proof     [][]byte `json:"proof"`
+	LeafIdx  uint64   `json:"leafIdx"`
+	TreeSize uint64   `json:"treeSize"`
+	Root     []byte   `json:"root"`
+	LeafHash []byte   `json:"leafHash"`
+	Proof    [][]byte `json:"proof"`
 
 	Desc      string `json:"desc"`
 	WantError bool   `json:"wantErr"`
@@ -156,25 +156,25 @@ func writeInclusionTestData(rootDirectory string) error {
 	return nil
 }
 
-func corruptInclusionProof(leafIndex, treeSize uint64, proof [][]byte, root, leafHash []byte) []inclusionProbe {
+func corruptInclusionProof(leafIdx, treeSize uint64, proof [][]byte, root, leafHash []byte) []inclusionProbe {
 	ret := []inclusionProbe{
 		// Wrong leaf index.
-		{leafIndex - 1, treeSize, root, leafHash, proof, "leafIndex - 1", true},
-		{leafIndex + 1, treeSize, root, leafHash, proof, "leafIndex + 1", true},
-		{leafIndex ^ 2, treeSize, root, leafHash, proof, "leafIndex ^ 2", true},
+		{leafIdx - 1, treeSize, root, leafHash, proof, "leafIdx - 1", true},
+		{leafIdx + 1, treeSize, root, leafHash, proof, "leafIdx + 1", true},
+		{leafIdx ^ 2, treeSize, root, leafHash, proof, "leafIdx ^ 2", true},
 		// Wrong tree height.
-		{leafIndex, treeSize * 2, root, leafHash, proof, "treeSize * 2", true},
-		{leafIndex, treeSize / 2, root, leafHash, proof, "treeSize div 2", true},
+		{leafIdx, treeSize * 2, root, leafHash, proof, "treeSize * 2", true},
+		{leafIdx, treeSize / 2, root, leafHash, proof, "treeSize div 2", true},
 		// Wrong leaf or root.
-		{leafIndex, treeSize, root, []byte("WrongLeaf"), proof, "wrong leaf", true},
-		{leafIndex, treeSize, sha256EmptyTreeHash, leafHash, proof, "empty root", true},
-		{leafIndex, treeSize, sha256SomeHash, leafHash, proof, "random root", true},
+		{leafIdx, treeSize, root, []byte("WrongLeaf"), proof, "wrong leaf", true},
+		{leafIdx, treeSize, sha256EmptyTreeHash, leafHash, proof, "empty root", true},
+		{leafIdx, treeSize, sha256SomeHash, leafHash, proof, "random root", true},
 		// Add garbage at the end.
-		{leafIndex, treeSize, root, leafHash, extend(proof, []byte{}), "trailing garbage", true},
-		{leafIndex, treeSize, root, leafHash, extend(proof, root), "trailing root", true},
+		{leafIdx, treeSize, root, leafHash, extend(proof, []byte{}), "trailing garbage", true},
+		{leafIdx, treeSize, root, leafHash, extend(proof, root), "trailing root", true},
 		// Add garbage at the front.
-		{leafIndex, treeSize, root, leafHash, prepend(proof, []byte{}), "preceding garbage", true},
-		{leafIndex, treeSize, root, leafHash, prepend(proof, root), "preceding root", true},
+		{leafIdx, treeSize, root, leafHash, prepend(proof, []byte{}), "preceding garbage", true},
+		{leafIdx, treeSize, root, leafHash, prepend(proof, root), "preceding root", true},
 	}
 	ln := len(proof)
 
@@ -184,27 +184,27 @@ func corruptInclusionProof(leafIndex, treeSize uint64, proof [][]byte, root, lea
 		wrongProof[i] = append([]byte(nil), wrongProof[i]...) // But also the modified data.
 		wrongProof[i][0] ^= 8                                 // Flip the bit.
 		desc := fmt.Sprintf("modified proof[%d] bit 3", i)
-		ret = append(ret, inclusionProbe{leafIndex, treeSize, root, leafHash, wrongProof, desc, true})
+		ret = append(ret, inclusionProbe{leafIdx, treeSize, root, leafHash, wrongProof, desc, true})
 	}
 
 	if ln > 0 {
-		ret = append(ret, inclusionProbe{leafIndex, treeSize, root, leafHash, proof[:ln-1], "removed component", true})
+		ret = append(ret, inclusionProbe{leafIdx, treeSize, root, leafHash, proof[:ln-1], "removed component", true})
 	}
 	if ln > 1 {
 		wrongProof := prepend(proof[1:], proof[0], sha256SomeHash)
-		ret = append(ret, inclusionProbe{leafIndex, treeSize, root, leafHash, wrongProof, "inserted component", true})
+		ret = append(ret, inclusionProbe{leafIdx, treeSize, root, leafHash, wrongProof, "inserted component", true})
 	}
 
 	return ret
 }
 
-func writeCorruptedInclusionTestData(directory string, leafIndex, treeSize uint64, proof [][]byte, root, leafHash []byte) error {
-	happyPath := inclusionProbe{leafIndex, treeSize, root, leafHash, proof, "happy path", false}
+func writeCorruptedInclusionTestData(directory string, leafIdx, treeSize uint64, proof [][]byte, root, leafHash []byte) error {
+	happyPath := inclusionProbe{leafIdx, treeSize, root, leafHash, proof, "happy path", false}
 	if err := writeInclusionProbe(directory, happyPath); err != nil {
 		return nil
 	}
 
-	probes := corruptInclusionProof(leafIndex, treeSize, proof, root, leafHash)
+	probes := corruptInclusionProof(leafIdx, treeSize, proof, root, leafHash)
 	for _, p := range probes {
 		if err := writeInclusionProbe(directory, p); err != nil {
 			return err

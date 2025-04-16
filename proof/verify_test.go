@@ -32,11 +32,11 @@ var (
 
 // inclusionProbe is a parameter set for inclusion proof verification.
 type inclusionProbe struct {
-	LeafIndex uint64   `json:"leafIndex"`
-	TreeSize  uint64   `json:"treeSize"`
-	Root      []byte   `json:"root"`
-	LeafHash  []byte   `json:"leafHash"`
-	Proof     [][]byte `json:"proof"`
+	LeafIdx  uint64   `json:"leafIdx"`
+	TreeSize uint64   `json:"treeSize"`
+	Root     []byte   `json:"root"`
+	LeafHash []byte   `json:"leafHash"`
+	Proof    [][]byte `json:"proof"`
 
 	Desc      string `json:"desc"`
 	WantError bool   `json:"wantErr"`
@@ -89,7 +89,7 @@ func TestVerifyInclusionProbes(t *testing.T) {
 
 	var wrong []string
 	for _, p := range probes {
-		err := VerifyInclusion(hasher, p.LeafIndex, p.TreeSize, p.LeafHash, p.Proof, p.Root)
+		err := VerifyInclusion(hasher, p.LeafIdx, p.TreeSize, p.LeafHash, p.Proof, p.Root)
 		if p.WantError && err == nil {
 			wrong = append(wrong, fmt.Sprintf("expected error but didn't get one: %s", p.Desc))
 			continue
