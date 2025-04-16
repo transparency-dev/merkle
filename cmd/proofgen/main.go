@@ -446,9 +446,7 @@ func writeConsistencyProbe(directory string, probe consistencyProbe) error {
 
 // extend explicitly copies |proof| slice and appends |hashes| to it.
 func extend(proof [][]byte, hashes ...[]byte) [][]byte {
-	res := make([][]byte, len(proof), len(proof)+len(hashes))
-	copy(res, proof)
-	return append(res, hashes...)
+	return append(append([][]byte{}, proof...), hashes...)
 }
 
 // prepend adds |proof| to the tail of |hashes|.
