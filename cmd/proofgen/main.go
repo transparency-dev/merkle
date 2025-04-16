@@ -132,7 +132,7 @@ func writeInclusionTestData(rootDirectory string) error {
 
 		leafHash := rfc6962.DefaultHasher.HashLeaf(leaves[p.leaf-1])
 		if err = writeCorruptedInclusionTestData(directory, p.leaf-1, p.size, p.proof, roots[p.size-1], leafHash); err != nil {
-			log.Fatal("Failed to write inclusion test data: %s", err)
+			log.Fatalf("Failed to write inclusion test data: %s", err)
 		}
 	}
 
@@ -326,7 +326,7 @@ func writeConsistencyTestData(rootDirectory string) error {
 		err = writeCorruptedConsistencyTestData(directory, p.size1, p.size2, p.proof,
 			roots[p.size1-1], roots[p.size2-1])
 		if err != nil {
-			log.Fatal("Failed to write consistency test data: %s", err)
+			log.Fatalf("Failed to write consistency test data: %s", err)
 		}
 	}
 
