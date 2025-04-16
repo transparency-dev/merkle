@@ -20,7 +20,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -57,16 +56,8 @@ type consistencyProbe struct {
 
 func TestVerifyInclusionProbes(t *testing.T) {
 	var probes []inclusionProbe
-	root := "testdata/inclusion"
 
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Errorf("failed to run test")
-	}
-
-	directory := filepath.Join(file, "..", "..", root)
-
-	err := filepath.WalkDir(directory, func(path string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir("../testdata/inclusion", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -119,16 +110,8 @@ func TestVerifyInclusionProbes(t *testing.T) {
 
 func TestVerifyConsistencyProbes(t *testing.T) {
 	var probes []consistencyProbe
-	root := "testdata/consistency"
 
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Errorf("failed to run test")
-	}
-
-	directory := filepath.Join(file, "..", "..", root)
-
-	err := filepath.WalkDir(directory, func(path string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir("../testdata/consistency", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
