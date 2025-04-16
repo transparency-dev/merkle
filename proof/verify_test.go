@@ -26,10 +26,6 @@ import (
 	"github.com/transparency-dev/merkle/rfc6962"
 )
 
-var (
-	hasher = rfc6962.DefaultHasher
-)
-
 // inclusionProbe is a parameter set for inclusion proof verification.
 type inclusionProbe struct {
 	LeafIdx  uint64   `json:"leafIdx"`
@@ -89,7 +85,7 @@ func TestVerifyInclusionProbes(t *testing.T) {
 
 	var wrong []string
 	for _, p := range probes {
-		err := VerifyInclusion(hasher, p.LeafIdx, p.TreeSize, p.LeafHash, p.Proof, p.Root)
+		err := VerifyInclusion(rfc6962.DefaultHasher, p.LeafIdx, p.TreeSize, p.LeafHash, p.Proof, p.Root)
 		if p.WantError && err == nil {
 			wrong = append(wrong, fmt.Sprintf("expected error but didn't get one: %s", p.Desc))
 			continue
@@ -141,7 +137,7 @@ func TestVerifyConsistencyProbes(t *testing.T) {
 
 	var wrong []string
 	for _, p := range probes {
-		err := VerifyConsistency(hasher, p.Size1, p.Size2, p.Proof, p.Root1, p.Root2)
+		err := VerifyConsistency(rfc6962.DefaultHasher, p.Size1, p.Size2, p.Proof, p.Root1, p.Root2)
 		if p.WantError && err == nil {
 			wrong = append(wrong, fmt.Sprintf("expected error but didn't get one: %s", p.Desc))
 			continue

@@ -40,7 +40,6 @@ type consistencyTestVector struct {
 }
 
 var (
-	hasher              = rfc6962.DefaultHasher
 	sha256SomeHash      = dh("abacaba000000000000000000000000000000000000000000060061e00123456", 32)
 	sha256EmptyTreeHash = dh("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", 32)
 
@@ -217,7 +216,7 @@ func writeCorruptedInclusionTestData(directory string, leafIdx, treeSize uint64,
 func writeSingleEntryInclusionTestData(directory string) error {
 	data := []byte("data")
 	// Root and leaf hash for 1-entry tree are the same.
-	hash := hasher.HashLeaf(data)
+	hash := rfc6962.DefaultHasher.HashLeaf(data)
 	// The corresponding inclusion proof is empty.
 	proof := [][]byte{}
 	emptyHash := []byte{}
