@@ -26,7 +26,7 @@ check_cmd() {
 }
 
 usage() {
-  echo "$0 [--coverage] [--fix] [--no-mod-tidy] [--no-build] [--no-linters]"
+  echo "$0 [--coverage] [--fix] [--no-mod-tidy] [--no-build] [--no-linters] [--no-generate] [--empty-diff]"
 }
 
 main() {
@@ -35,6 +35,8 @@ main() {
   local run_mod_tidy=1
   local run_build=1
   local run_lint=1
+  local run_generate=1
+  local empty_diff=0
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --coverage)
@@ -55,6 +57,12 @@ main() {
         ;;
       --no-linters)
         run_lint=0
+        ;;
+      --no-generate)
+        run_generate=0
+        ;;
+      --empty-diff)
+        empty_diff=1
         ;;
       *)
         usage
@@ -109,6 +117,16 @@ main() {
     golangci-lint run --deadline=8m
     echo 'checking license headers'
     ./scripts/check_license.sh ${go_srcs}
+  fi
+
+  if [[ "${run_generate}" -eq 1 ]]; then
+    echo 'running go generate'
+    go run ./cmd/proofgen
+  fi
+
+  if [[ "${empty_diff}" -eq 1 ]]; then
+    echo 'checking git diff is empty'
+    git diff --exit-code
   fi
 }
 

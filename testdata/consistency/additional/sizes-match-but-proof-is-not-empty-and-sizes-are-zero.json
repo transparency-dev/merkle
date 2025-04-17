@@ -1,0 +1,11 @@
+{
+  "size1": 0,
+  "size2": 0,
+  "root1": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+  "root2": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+  "proof": [
+    "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
+  ],
+  "desc": "sizes match but proof is not empty and sizes are zero",
+  "wantErr": true
+}

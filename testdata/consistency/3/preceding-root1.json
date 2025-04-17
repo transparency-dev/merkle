@@ -1,0 +1,13 @@
+{
+  "size1": 2,
+  "size2": 5,
+  "root1": "+sVCA+fMaWzw38tCySodnbr3CtnmIfS9jZhmLwDjwSU=",
+  "root2": "Tju7H3tHjc/nH7YxYxUZo7yhLJrvyhYSv85ME6hiZNQ=",
+  "proof": [
+    "+sVCA+fMaWzw38tCySodnbr3CtnmIfS9jZhmLwDjwSU=",
+    "Xwg/ChozygdqlSeYMlgNs+DvRYS9/x9UyKNg9Q3jAx4=",
+    "vBoGQ7EuTS18d5GPROD095qDi2z57FtcKD4fTYhZnms="
+  ],
+  "desc": "preceding root1",
+  "wantErr": true
+}

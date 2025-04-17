@@ -1,0 +1,9 @@
+{
+  "size1": 1,
+  "size2": 0,
+  "root1": "ZG9uJ3QgY2FyZSAx",
+  "root2": "ZG9uJ3QgY2FyZSAy",
+  "proof": [],
+  "desc": "size1 is greater than size2",
+  "wantErr": true
+}

@@ -1,0 +1,13 @@
+{
+  "leafIdx": 0,
+  "treeSize": 8,
+  "root": "XcnaeacGWamtVZy3Ad7ZoqudgjqtL0lgz+Nw7/RgQyg=",
+  "leafHash": "V3JvbmdMZWFm",
+  "proof": [
+    "lqKW0iTyhcZ77pPDD4owkVfw2qNdxbh+QQt4YwoJz8c=",
+    "Xwg/ChozygdqlSeYMlgNs+DvRYS9/x9UyKNg9Q3jAx4=",
+    "a0eq8p7jwq+a+Im8H7klTavTEXfxYjLdaqsDXKOb9uQ="
+  ],
+  "desc": "wrong leaf",
+  "wantErr": true
+}
