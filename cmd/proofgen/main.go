@@ -275,16 +275,16 @@ func staticInclusionProbes(rootDir string) error {
 }
 
 func writeInclusionProbe(dir string, probe inclusionProbe) error {
-	fileName := strings.Replace(probe.Desc, " ", "-", -1) + ".json"
+	fileName := strings.ReplaceAll(probe.Desc, " ", "-") + ".json"
 
 	probeJson, err := json.MarshalIndent(probe, "", "  ")
 	if err != nil {
-		return fmt.Errorf("Error marshaling probe: %s", err)
+		return fmt.Errorf("marshaling probe: %s", err)
 	}
 
 	fileLocation := filepath.Join(dir, fileName)
 	if err := os.WriteFile(fileLocation, probeJson, 0644); err != nil {
-		return fmt.Errorf("Error writing probe: %s: %s", fileName, err)
+		return fmt.Errorf("writing probe: %s: %s", fileName, err)
 	}
 
 	return nil
@@ -311,7 +311,7 @@ func consistencyProbes(rootDir string) error {
 
 		if err := corruptedConsistencyProbes(dir, p.size1, p.size2, p.proof,
 			roots[p.size1-1], roots[p.size2-1]); err != nil {
-			fmt.Errorf("Failed to write consistency test data: %s", err)
+			return fmt.Errorf("write consistency test data: %s", err)
 		}
 	}
 
@@ -385,7 +385,9 @@ func corruptedConsistencyProbes(dir string, size1, size2 uint64, proof [][]byte,
 
 	probes := invalidConsistencyProof(size1, size2, root1, root2, proof)
 	for _, p := range probes {
-		writeConsistencyProbe(dir, p)
+		if err := writeConsistencyProbe(dir, p); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -429,16 +431,16 @@ func staticConsistencyProbes(dir string) error {
 }
 
 func writeConsistencyProbe(dir string, probe consistencyProbe) error {
-	fileName := strings.Replace(probe.Desc, " ", "-", -1) + ".json"
+	fileName := strings.ReplaceAll(probe.Desc, " ", "-") + ".json"
 
 	probeJson, err := json.MarshalIndent(probe, "", "  ")
 	if err != nil {
-		return fmt.Errorf("Error marshaling probe: %s", err)
+		return fmt.Errorf("marshaling probe: %s", err)
 	}
 
 	fileLocation := filepath.Join(dir, fileName)
 	if err := os.WriteFile(fileLocation, probeJson, 0644); err != nil {
-		return fmt.Errorf("Error writing probe: %s: %s", fileName, err)
+		return fmt.Errorf("writing probe: %s: %s", fileName, err)
 	}
 
 	return nil
@@ -457,10 +459,10 @@ func prepend(proof [][]byte, hashes ...[]byte) [][]byte {
 func dh(h string, expLen int) []byte {
 	r, err := hex.DecodeString(h)
 	if err != nil {
-		log.Fatalf("Error decoding input: %s", err)
+		log.Fatalf("decoding input: %s", err)
 	}
 	if got := len(r); got != expLen {
-		log.Fatalf(fmt.Sprintf("decode %q: len=%d, want %d", h, got, expLen))
+		log.Fatalf("decode %q: len=%d, want %d", h, got, expLen)
 	}
 	return r
 }
@@ -468,11 +470,11 @@ func dh(h string, expLen int) []byte {
 func main() {
 	inclusionDir := "testdata/inclusion"
 	if err := inclusionProbes(inclusionDir); err != nil {
-		log.Fatalf("Error writing inclusion test data: %s", err)
+		log.Fatalf("writing inclusion test data: %s", err)
 	}
 
 	consistencyDir := "testdata/consistency"
 	if err := consistencyProbes(consistencyDir); err != nil {
-		log.Fatalf("Error writing consistency test data: %s", err)
+		log.Fatalf("writing consistency test data: %s", err)
 	}
 }
