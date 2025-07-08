@@ -18,7 +18,7 @@ This is the data structure which is used by projects such as
 
 ## Support
 * Mailing list: https://groups.google.com/forum/#!forum/trillian-transparency
-- Slack: https://transparency-dev.slack.com/ ([invitation](https://join.slack.com/t/transparency-dev/shared_invite/zt-27pkqo21d-okUFhur7YZ0rFoJVIOPznQ))
+- Slack: https://transparency-dev.slack.com/ ([invitation](https://transparency.dev/slack/))
 
 
 
