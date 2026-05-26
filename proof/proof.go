@@ -62,23 +62,23 @@ func SubtreeInclusion(index, start, end uint64) (Nodes, error) {
 	if start >= end {
 		return Nodes{}, fmt.Errorf("start %d greater than or equal to end %d", start, end)
 	}
-	if index < start || index > end {
-		return Nodes{}, fmt.Errorf("index %d out of bounds for subtree range [%d, %d)", index, start, end)
+	if index < start || index >= end {
+		return Nodes{}, fmt.Errorf("index %d out of bounds for subtree [%d, %d)", index, start, end)
 	}
 	if err := checkSubtreeAlignment(start, end); err != nil {
 		return Nodes{}, err
 	}
 
-	// Shift the subtree to the left such that it starts at 0.
-	p := nodes(index-start, 0, end-start)
+	// Shift the subtree to the left, such that it starts at 0.
+	p := nodes(index-start, 0, end-start).skipFirst()
 
-	// Shift all nodes back to the right.
+	// Shift nodes back to the right, in line with the original subtree position.
 	for n := range p.IDs {
 		p.IDs[n].Index += start >> p.IDs[n].Level
 	}
 	p.ephem.Index += start >> p.ephem.Level
 
-	return p.skipFirst(), nil
+	return p, nil
 }
 
 // Consistency returns the information on how to fetch and construct a
