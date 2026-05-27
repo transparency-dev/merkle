@@ -73,8 +73,8 @@ func SubtreeInclusion(index, start, end uint64) (Nodes, error) {
 	for n := range p.IDs {
 		p.IDs[n].Index += start >> p.IDs[n].Level
 	}
-	// For consistency, always shift p.ephem, regardless of whether it will be
-	// used by the proof.
+	// p.ephem might not be used by the resulting proof, but shift it
+	// unconditionally for uniformity.
 	p.ephem.Index += start >> p.ephem.Level
 
 	return p, nil
@@ -105,6 +105,62 @@ func Consistency(size1, size2 uint64) (Nodes, error) {
 
 	// Handle the case when size1 is a power of 2.
 	if index == 0 {
+		return p.skipFirst(), nil
+	}
+	return p, nil
+}
+
+// SubtreeConsistency returns the information on how to fetch and construct a
+// consistency proof between a Merkle subtree covering [start, end) and log
+// Merkle tree of a given size. It requires:
+//   - 0 <= start < end <= size
+//   - start to be a multiple of the smallest power of two greater than or equal to
+//     (end - start)
+func SubtreeConsistency(start, end, size uint64) (Nodes, error) {
+	if err := isSubtreeValid(start, end); err != nil {
+		return Nodes{}, fmt.Errorf("subtree invalid: %v", err)
+	}
+	if end > size {
+		return Nodes{}, fmt.Errorf("subtree end %d strictly greater than tree size %d", end, size)
+	}
+	if start == 0 && end == size {
+		return Nodes{IDs: []compact.NodeID{}}, nil
+	}
+
+	// If end == size, prove inclusion of [start, end) into the tree.
+	if end == size {
+		// Find the subtree's root, the lowest common ancestor of entries |start| and
+		// |end-1|.
+		level := uint(bits.Len64((end - 1) ^ start))
+		index := (end - 1) >> level
+
+		// Shift the tree down by |level|.
+		p := nodes(index, 0, index+1)
+		// The first node of the proof is the subtree's root. It is already known
+		// by the client and can be skipped.
+		p = p.skipFirst()
+
+		// Shift the nodes back up.
+		for n := range p.IDs {
+			p.IDs[n].Level += level
+		}
+		// p.ephem might not be used by the resulting proof, but shift it
+		// unconditionally for uniformity.
+		p.ephem.Level += level
+		return p, nil
+	}
+
+	// Find the root of the biggest perfect subtree of [start, end) ending at end.
+	level := uint(bits.TrailingZeros64(end - start))
+	index := (end - 1) >> level
+
+	// The consistency proof consists of this node (except if the subtree is full,
+	// in which case adding this node would be redundant because the client is
+	// assumed to know it from a checkpoint), and nodes of the inclusion proof
+	// of this node in the tree of the given size.
+	p := nodes(index, level, size)
+	// Handle the case when the subtree size is a power of 2.
+	if (end-start)&(end-start-1) == 0 {
 		return p.skipFirst(), nil
 	}
 	return p, nil
