@@ -52,6 +52,35 @@ func Inclusion(index, size uint64) (Nodes, error) {
 	return nodes(index, 0, size).skipFirst(), nil
 }
 
+// SubtreeInclusion returns the information on how to fetch and construct an inclusion
+// proof for the given leaf index in a log Merkle subtree covering [start, end).
+// It requires:
+//   - 0 <= start <= index < end
+//   - start to be a multiple of the smallest power of two greater than or equal to
+//     (end - start)
+func SubtreeInclusion(index, start, end uint64) (Nodes, error) {
+	if start >= end {
+		return Nodes{}, fmt.Errorf("start %d greater than or equal to end %d", start, end)
+	}
+	if index < start || index > end {
+		return Nodes{}, fmt.Errorf("index %d out of bounds for subtree range [%d, %d)", index, start, end)
+	}
+	if err := checkSubtreeAlignment(start, end); err != nil {
+		return Nodes{}, err
+	}
+
+	// Shift the subtree to the left such that it starts at 0.
+	p := nodes(index-start, 0, end-start)
+
+	// Shift all nodes back to the right.
+	for n := range p.IDs {
+		p.IDs[n].Index += start >> p.IDs[n].Level
+	}
+	p.ephem.Index += start >> p.ephem.Level
+
+	return p.skipFirst(), nil
+}
+
 // Consistency returns the information on how to fetch and construct a
 // consistency proof between the two given tree sizes of a log Merkle tree. It
 // requires 0 <= size1 <= size2.
@@ -188,4 +217,16 @@ func reverse(ids []compact.NodeID) {
 	for i, j := 0, len(ids)-1; i < j; i, j = i+1, j-1 {
 		ids[i], ids[j] = ids[j], ids[i]
 	}
+}
+
+func checkSubtreeAlignment(start, end uint64) error {
+	shift := bits.Len64(end - start - 1)
+	if shift >= 64 {
+		if start != 0 {
+			return fmt.Errorf("start %d not a multiple of bit_ceil(end - start)", start)
+		}
+	} else if bc := uint64(1) << shift; start%bc != 0 {
+		return fmt.Errorf("start %d not a multiple of bit_ceil(end - start) = %d", start, bc)
+	}
+	return nil
 }
