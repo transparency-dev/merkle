@@ -90,24 +90,7 @@ func Consistency(size1, size2 uint64) (Nodes, error) {
 	if size1 == 0 {
 		return Nodes{}, fmt.Errorf("consistency proof from empty tree is meaningless")
 	}
-	if size1 == size2 {
-		return Nodes{IDs: []compact.NodeID{}}, nil
-	}
-
-	// Find the root of the biggest perfect subtree that ends at size1.
-	level := uint(bits.TrailingZeros64(size1))
-	index := (size1 - 1) >> level
-	// The consistency proof consists of this node (except if size1 is a power of
-	// two, in which case adding this node would be redundant because the client
-	// is assumed to know it from a checkpoint), and nodes of the inclusion proof
-	// of this node in the tree of size2.
-	p := nodes(index, level, size2)
-
-	// Handle the case when size1 is a power of 2.
-	if index == 0 {
-		return p.skipFirst(), nil
-	}
-	return p, nil
+	return subtreeConsistency(0, size1, size2)
 }
 
 // SubtreeConsistency returns the information on how to fetch and construct a
@@ -123,6 +106,10 @@ func SubtreeConsistency(start, end, size uint64) (Nodes, error) {
 	if end > size {
 		return Nodes{}, fmt.Errorf("subtree end %d strictly greater than tree size %d", end, size)
 	}
+	return subtreeConsistency(start, end, size)
+}
+
+func subtreeConsistency(start, end, size uint64) (Nodes, error) {
 	if start == 0 && end == size {
 		return Nodes{IDs: []compact.NodeID{}}, nil
 	}
