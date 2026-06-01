@@ -42,8 +42,8 @@ type inclusionProbe struct {
 // verification.
 type subtreeInclusionProbe struct {
 	LeafIdx  uint64   `json:"leafIdx"`
-	Start    uint64   `json:"treeSize"`
-	End      uint64   `json:"treeSize"`
+	Start    uint64   `json:"start"`
+	End      uint64   `json:"end"`
 	Root     []byte   `json:"root"`
 	LeafHash []byte   `json:"leafHash"`
 	Proof    [][]byte `json:"proof"`

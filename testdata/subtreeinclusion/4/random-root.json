@@ -1,6 +1,7 @@
 {
   "leafIdx": 1,
-  "treeSize": 5,
+  "start": 0,
+  "end": 5,
   "root": "q6yroAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAGHgASNFY=",
   "leafHash": "lqKW0iTyhcZ77pPDD4owkVfw2qNdxbh+QQt4YwoJz8c=",
   "proof": [
