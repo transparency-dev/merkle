@@ -65,8 +65,8 @@ func SubtreeInclusion(index, start, end uint64) (Nodes, error) {
 	if index < start || index >= end {
 		return Nodes{}, fmt.Errorf("index %d out of bounds for subtree [%d, %d)", index, start, end)
 	}
-	if err := checkSubtreeAlignment(start, end); err != nil {
-		return Nodes{}, err
+	if !isSubtreeValid(start, end) {
+		return Nodes{}, fmt.Errorf("start %d not a multiple of bit_ceil(end - start) = %d", start, end-start)
 	}
 
 	// Shift the subtree to the left, such that it starts at 0.
@@ -219,14 +219,10 @@ func reverse(ids []compact.NodeID) {
 	}
 }
 
-func checkSubtreeAlignment(start, end uint64) error {
+func isSubtreeValid(start, end uint64) bool {
 	shift := bits.Len64(end - start - 1)
 	if shift >= 64 {
-		if start != 0 {
-			return fmt.Errorf("start %d not a multiple of bit_ceil(end - start)", start)
-		}
-	} else if bc := uint64(1) << shift; start%bc != 0 {
-		return fmt.Errorf("start %d not a multiple of bit_ceil(end - start) = %d", start, bc)
+		return start == 0
 	}
-	return nil
+	return start%(uint64(1)<<shift) == 0
 }

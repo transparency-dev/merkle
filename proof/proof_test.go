@@ -16,7 +16,6 @@ package proof
 
 import (
 	"fmt"
-	"math/bits"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -426,7 +425,7 @@ func TestInclusionSubtreeSucceedsUpToTreeSize(t *testing.T) {
 	const maxSize = uint64(555)
 	for sbe := uint64(1); sbe <= maxSize; sbe++ {
 		for sbs := uint64(0); sbs < sbe; sbs++ {
-			if bc := uint64(1) << bits.Len64(sbe-sbs-1); sbs%bc != 0 {
+			if !isSubtreeValid(sbs, sbe) {
 				continue
 			}
 			for i := sbs; i < sbe; i++ {
