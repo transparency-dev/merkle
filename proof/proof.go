@@ -219,10 +219,27 @@ func reverse(ids []compact.NodeID) {
 	}
 }
 
+// isSubTreeValid returns whether a subtree covers a valid range.
+// A subtree is valid if there exist a parent tree node to:
+// - all the subtree nodes
+// - no extra node to the left of the subtree
+// - potentially extra nodes to the right of the subtree
 func isSubtreeValid(start, end uint64) bool {
-	shift := bits.Len64(end - start - 1)
-	if shift >= 64 {
-		return start == 0
+	l := end - start
+	if start == 0 {
+		return true
+	} else if (l) > uint64(1)<<63 {
+		// special-case large subtree to avoid panic
+		return false
 	}
-	return start%(uint64(1)<<shift) == 0
+	return start%bitCeil(l) == 0
+}
+
+// bitCeil returns the smallest power of 2 larger than n.
+// Panics if n > 2^63.
+func bitCeil(n uint64) uint64 {
+	if n <= 1 {
+		return 1
+	}
+	return uint64(1) << bits.Len64(n-1)
 }
