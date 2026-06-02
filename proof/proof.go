@@ -76,6 +76,8 @@ func SubtreeInclusion(index, start, end uint64) (Nodes, error) {
 	for n := range p.IDs {
 		p.IDs[n].Index += start >> p.IDs[n].Level
 	}
+	// For consistency, always shift p.ephem, regardless of whether it will be
+	// used by the proof.
 	p.ephem.Index += start >> p.ephem.Level
 
 	return p, nil
@@ -163,6 +165,8 @@ func nodes(index uint64, level uint, size uint64) Nodes {
 		len1, len2 = 0, 0
 	}
 
+	// Edge case: For perfect trees the ephemeral node is the sibling of the root
+	// However, it will not be used in any proof.
 	return Nodes{IDs: nodes, begin: len1, end: len2, ephem: fork.Sibling()}
 }
 
@@ -236,7 +240,7 @@ func isSubtreeValid(start, end uint64) bool {
 }
 
 // bitCeil returns the smallest power of 2 larger than n.
-// Panics if n > 2^63.
+// MUST NOT be used with n larger than uint64(1)<<63.
 func bitCeil(n uint64) uint64 {
 	if n <= 1 {
 		return 1
