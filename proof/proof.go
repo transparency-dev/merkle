@@ -236,8 +236,8 @@ func isSubtreeValid(start, end uint64) error {
 		// special-case large subtree to avoid panic
 		return fmt.Errorf("start %d must be 0 when subtree length %d > 1<<63. ", start, l)
 	}
-	if start%bitCeil(l) != 0 {
-		return fmt.Errorf("start %d not a multiple of bit_ceil(end - start) = %d", start, l)
+	if bc := bitCeil(l); start%bc != 0 {
+		return fmt.Errorf("start %d not a multiple of bit_ceil(end - start) = %d", start, bc)
 	}
 	return nil
 }
