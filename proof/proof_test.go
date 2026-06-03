@@ -425,7 +425,7 @@ func TestInclusionSubtreeSucceedsUpToTreeSize(t *testing.T) {
 	const maxSize = uint64(555)
 	for sbe := uint64(1); sbe <= maxSize; sbe++ {
 		for sbs := uint64(0); sbs < sbe; sbs++ {
-			if !isSubtreeValid(sbs, sbe) {
+			if err := isSubtreeValid(sbs, sbe); err != nil {
 				continue
 			}
 			for i := sbs; i < sbe; i++ {

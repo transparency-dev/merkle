@@ -52,8 +52,8 @@ func VerifyInclusion(hasher merkle.LogHasher, index, size uint64, leafHash []byt
 }
 
 // VerifySubtreeInclusion verifies the correctness of the subtree inclusion
-// proof for the leaf with the specified hash and index, relatively to the
-// [start, end) subtree with a given subtree root hash.
+// proof for the leaf with the specified hash and index, relative to the
+// provided subtree [start, end) subtree and subtree root hash.
 // It requires:
 //   - 0 <= start <= index < end
 //   - start to be a multiple of the smallest power of two greater than or equal to
@@ -65,8 +65,8 @@ func VerifySubtreeInclusion(hasher merkle.LogHasher, index, start, end uint64, l
 	if index < start || index >= end {
 		return fmt.Errorf("index %d out of bounds for subtree [%d, %d)", index, start, end)
 	}
-	if !isSubtreeValid(start, end) {
-		return fmt.Errorf("start %d not a multiple of bit_ceil(end - start)", start)
+	if err := isSubtreeValid(start, end); err != nil {
+		return fmt.Errorf("subtree invalid: %v", err)
 	}
 	calcRoot, err := RootFromInclusionProof(hasher, index-start, end-start, leafHash, proof)
 	if err != nil {
