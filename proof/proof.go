@@ -66,7 +66,7 @@ func SubtreeInclusion(index, start, end uint64) (Nodes, error) {
 		return Nodes{}, fmt.Errorf("index %d out of bounds for subtree [%d, %d)", index, start, end)
 	}
 	if !isSubtreeValid(start, end) {
-		return Nodes{}, fmt.Errorf("start %d not a multiple of bit_ceil(end - start) = %d", start, end-start)
+		return Nodes{}, fmt.Errorf("start %d not a multiple of bit_ceil(end - start)", start)
 	}
 
 	// Shift the subtree to the left, such that it starts at 0.

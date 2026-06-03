@@ -66,7 +66,7 @@ func VerifySubtreeInclusion(hasher merkle.LogHasher, index, start, end uint64, l
 		return fmt.Errorf("index %d out of bounds for subtree [%d, %d)", index, start, end)
 	}
 	if !isSubtreeValid(start, end) {
-		return fmt.Errorf("start %d not a multiple of bit_ceil(end - start) = %d", start, end-start)
+		return fmt.Errorf("start %d not a multiple of bit_ceil(end - start)", start)
 	}
 	calcRoot, err := RootFromInclusionProof(hasher, index-start, end-start, leafHash, proof)
 	if err != nil {
