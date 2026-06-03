@@ -1,10 +1,10 @@
 {
-  "leafIdx": 1,
-  "start": 0,
-  "end": 0,
+  "leafIdx": 2,
+  "start": 1,
+  "end": 1,
   "root": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
   "leafHash": "q6yroAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAGHgASNFY=",
   "proof": [],
-  "desc": "empty root and random leaf",
+  "desc": "empty root and random leaf - subtree",
   "wantErr": true
 }

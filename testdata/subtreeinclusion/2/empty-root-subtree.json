@@ -1,7 +1,7 @@
 {
-  "leafIdx": 5,
-  "start": 0,
-  "end": 8,
+  "leafIdx": 13,
+  "start": 8,
+  "end": 16,
   "root": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
   "leafHash": "QnGia+DYqE8L1UyMMC58s6O10fpngKQLzOKHNHfatlg=",
   "proof": [
@@ -9,6 +9,6 @@
     "yoVOoSjtBQtBs1/8G4e46yveRh6eO1WW7Oa51ZdaCuA=",
     "037kGJdt2VdTwcc4Yrk5j6Kiz5tP8P3+izDNlSCWFLc="
   ],
-  "desc": "empty root",
+  "desc": "empty root - subtree",
   "wantErr": true
 }

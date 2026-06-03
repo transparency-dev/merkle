@@ -1,7 +1,7 @@
 {
-  "leafIdx": 5,
-  "start": 0,
-  "end": 8,
+  "leafIdx": 13,
+  "start": 8,
+  "end": 16,
   "root": "XcnaeacGWamtVZy3Ad7ZoqudgjqtL0lgz+Nw7/RgQyg=",
   "leafHash": "V3JvbmdMZWFm",
   "proof": [
@@ -9,6 +9,6 @@
     "yoVOoSjtBQtBs1/8G4e46yveRh6eO1WW7Oa51ZdaCuA=",
     "037kGJdt2VdTwcc4Yrk5j6Kiz5tP8P3+izDNlSCWFLc="
   ],
-  "desc": "wrong leaf",
+  "desc": "wrong leaf - subtree",
   "wantErr": true
 }
