@@ -1,0 +1,12 @@
+{
+  "leafIdx": 2,
+  "start": 0,
+  "end": 1,
+  "root": "rra8/idLcKFPsGel5VeCZNsPqbUa9eC6FZFY8yngbnc=",
+  "leafHash": "ApjRIpBtz8EIkstTpzmS/FufST6kybrbJ7eRtBJ6f+c=",
+  "proof": [
+    "+sVCA+fMaWzw38tCySodnbr3CtnmIfS9jZhmLwDjwSU="
+  ],
+  "desc": "treeSize div @2",
+  "wantErr": true
+}

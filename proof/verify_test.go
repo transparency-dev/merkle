@@ -38,6 +38,20 @@ type inclusionProbe struct {
 	WantError bool   `json:"wantErr"`
 }
 
+// subtreeInclusionProbe is a parameter set for subtree inclusion proof
+// verification.
+type subtreeInclusionProbe struct {
+	LeafIdx  uint64   `json:"leafIdx"`
+	Start    uint64   `json:"start"`
+	End      uint64   `json:"end"`
+	Root     []byte   `json:"root"`
+	LeafHash []byte   `json:"leafHash"`
+	Proof    [][]byte `json:"proof"`
+
+	Desc      string `json:"desc"`
+	WantError bool   `json:"wantErr"`
+}
+
 // consistencyProbe is a parameter set for consistency proof verification.
 type consistencyProbe struct {
 	Size1 uint64   `json:"size1"`
@@ -99,6 +113,58 @@ func TestVerifyInclusionProbes(t *testing.T) {
 
 	if len(wrong) > 0 {
 		t.Errorf("errors verifying inclusion probes: \n%d out of %d failures \nError messages: \n%s", len(wrong), len(probes), strings.Join(wrong, "\n"))
+	}
+}
+
+func TestVerifySubtreeInclusionProbes(t *testing.T) {
+	var probes []subtreeInclusionProbe
+
+	if err := filepath.WalkDir("../testdata/subtreeinclusion", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if d.IsDir() {
+			return nil
+		}
+
+		if filepath.Ext(d.Name()) != ".json" {
+			return nil
+		}
+
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+
+		var probe subtreeInclusionProbe
+		if err := json.Unmarshal(data, &probe); err != nil {
+			return fmt.Errorf("failed to parse subtree inclusion probe json: %s", err)
+		}
+
+		probes = append(probes, probe)
+
+		return nil
+	}); err != nil {
+		t.Errorf("failed to read subtree inclusion probes: %s", err)
+	}
+
+	var wrong []string
+	for _, p := range probes {
+		err := VerifySubtreeInclusion(rfc6962.DefaultHasher, p.LeafIdx, p.Start, p.End, p.LeafHash, p.Proof, p.Root)
+		if p.WantError && err == nil {
+			wrong = append(wrong, fmt.Sprintf("expected error but didn't get one: %s", p.Desc))
+			continue
+		}
+
+		if !p.WantError && err != nil {
+			wrong = append(wrong, fmt.Sprintf("unexpected error: %s, %s", p.Desc, err))
+			continue
+		}
+	}
+
+	if len(wrong) > 0 {
+		t.Errorf("errors verifying subtree inclusion probes: \n%d out of %d failures \nError messages: \n%s", len(wrong), len(probes), strings.Join(wrong, "\n"))
 	}
 }
 

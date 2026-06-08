@@ -1,0 +1,10 @@
+{
+  "leafIdx": 2,
+  "start": 0,
+  "end": 1,
+  "root": "bjQLnP+zepicpUTmu3gKLHiQHT+zNzh2hRGjBhevoB0=",
+  "leafHash": "bjQLnP+zepicpUTmu3gKLHiQHT+zNzh2hRGjBhevoB0=",
+  "proof": null,
+  "desc": "leafIdx XOR @2",
+  "wantErr": true
+}

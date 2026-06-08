@@ -1,0 +1,10 @@
+{
+  "leafIdx": 1,
+  "start": 1,
+  "end": 2,
+  "root": "DTrtAjFI/9KiWfvQzcf7PPl1ZYdg03dbgq9vkKrMLfw=",
+  "leafHash": "DTrtAjFI/9KiWfvQzcf7PPl1ZYdg03dbgq9vkKrMLfw=",
+  "proof": [],
+  "desc": "matching root and leaf - subtree",
+  "wantErr": false
+}
