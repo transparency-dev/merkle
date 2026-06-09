@@ -1,5 +1,3 @@
-//go:build go1.18
-
 package testonly
 
 import (
@@ -49,8 +47,8 @@ func FuzzConsistencyProofAndVerify(f *testing.F) {
 
 // Compute and verify inclusion proofs
 func FuzzInclusionProofAndVerify(f *testing.F) {
-	for size := 0; size <= 8; size++ {
-		for index := 0; index <= size; index++ {
+	for size := range 8 + 1 {
+		for index := range size + 1 {
 			f.Add(uint64(index), uint64(size))
 		}
 	}
@@ -77,8 +75,8 @@ func FuzzInclusionProofAndVerify(f *testing.F) {
 
 // Compute and verify inclusion proofs
 func FuzzSubtreeInclusionProofAndVerify(f *testing.F) {
-	for end := 0; end <= 8; end++ {
-		for start := 0; start <= end; start++ {
+	for end := range 8 + 1 {
+		for start := range end + 1 {
 			for index := start; index <= end; index++ {
 				f.Add(uint64(index), uint64(start), uint64(end))
 			}
@@ -115,8 +113,8 @@ func FuzzSubtreeInclusionProofAndVerify(f *testing.F) {
 }
 
 func FuzzHashAtAgainstReferenceImplementation(f *testing.F) {
-	for size := 0; size <= 8; size++ {
-		for index := 0; index <= size; index++ {
+	for size := range 8 + 1 {
+		for index := range size + 1 {
 			f.Add(uint64(index), uint64(size))
 		}
 	}
@@ -139,8 +137,8 @@ func FuzzHashAtAgainstReferenceImplementation(f *testing.F) {
 }
 
 func FuzzInclusionProofAgainstReferenceImplementation(f *testing.F) {
-	for size := 0; size <= 8; size++ {
-		for index := 0; index <= size; index++ {
+	for size := range 8 + 1 {
+		for index := range size + 1 {
 			f.Add(uint64(index), uint64(size))
 		}
 	}
@@ -167,9 +165,9 @@ func FuzzInclusionProofAgainstReferenceImplementation(f *testing.F) {
 }
 
 func FuzzConsistencyProofAgainstReferenceImplementation(f *testing.F) {
-	for size := 0; size <= 8; size++ {
-		for end := 0; end <= size; end++ {
-			for begin := 0; begin <= end; begin++ {
+	for size := range 8 + 1 {
+		for end := range size + 1 {
+			for begin := range end + 1 {
 				f.Add(uint64(size), uint64(begin), uint64(end))
 			}
 		}

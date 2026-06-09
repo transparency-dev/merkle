@@ -35,7 +35,7 @@ func validateTree(t *testing.T, mt *Tree, size uint64) {
 	if got, want := mt.Hash(), roots[size]; !bytes.Equal(got, want) {
 		t.Errorf("Hash(%d): %x, want %x", size, got, want)
 	}
-	for s := uint64(0); s <= size; s++ {
+	for s := range size + 1 {
 		if got, want := mt.HashAt(s), roots[s]; !bytes.Equal(got, want) {
 			t.Errorf("HashAt(%d/%d): %x, want %x", s, size, got, want)
 		}
@@ -70,7 +70,7 @@ func TestTreeHashAt(t *testing.T) {
 	test := func(desc string, entries [][]byte) {
 		t.Run(desc, func(t *testing.T) {
 			mt := newTree(entries)
-			for size := 0; size <= len(entries); size++ {
+			for size := range len(entries) + 1 {
 				got := mt.HashAt(uint64(size))
 				want := refRootHash(entries[:size], mt.hasher)
 				if !bytes.Equal(got, want) {
@@ -81,7 +81,7 @@ func TestTreeHashAt(t *testing.T) {
 	}
 
 	entries := LeafInputs()
-	for size := 0; size <= len(entries); size++ {
+	for size := range len(entries) + 1 {
 		test(fmt.Sprintf("size:%d", size), entries[:size])
 	}
 	test("generated", genEntries(256))
@@ -91,7 +91,8 @@ func TestTreeInclusionProof(t *testing.T) {
 	test := func(desc string, entries [][]byte) {
 		t.Run(desc, func(t *testing.T) {
 			mt := newTree(entries)
-			for index, size := uint64(0), uint64(len(entries)); index < size; index++ {
+			size := uint64(len(entries))
+			for index := range size {
 				got, err := mt.InclusionProof(index, size)
 				if err != nil {
 					t.Fatalf("InclusionProof(%d, %d): %v", index, size, err)
@@ -106,7 +107,7 @@ func TestTreeInclusionProof(t *testing.T) {
 
 	test("generated", genEntries(256))
 	entries := LeafInputs()
-	for size := 0; size < len(entries); size++ {
+	for size := range len(entries) {
 		test(fmt.Sprintf("golden:%d", size), entries[:size])
 	}
 }
@@ -120,7 +121,7 @@ func TestTreeConsistencyProof(t *testing.T) {
 		t.Error("ConsistencyProof(6, 3) succeeded unexpectedly")
 	}
 
-	for size1 := uint64(0); size1 <= 8; size1++ {
+	for size1 := range uint64(8) + 1 {
 		for size2 := size1; size2 <= 8; size2++ {
 			t.Run(fmt.Sprintf("%d:%d", size1, size2), func(t *testing.T) {
 				got, err := mt.ConsistencyProof(size1, size2)
@@ -142,7 +143,7 @@ func TestTreeConsistencyProofFuzz(t *testing.T) {
 
 	for treeSize := uint64(1); treeSize <= 256; treeSize++ {
 		mt := newTree(entries[:treeSize])
-		for i := 0; i < 8; i++ {
+		for range 8 {
 			size2 := rand.Uint64N(treeSize + 1)
 			size1 := rand.Uint64N(size2 + 1)
 

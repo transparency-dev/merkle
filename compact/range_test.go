@@ -66,7 +66,7 @@ func newTree(t *testing.T, size uint64) (*tree, compact.VisitFn) {
 		nodes[lvl] = make([]treeNode, size>>uint(lvl))
 	}
 	// Compute leaf hashes.
-	for i := uint64(0); i < size; i++ {
+	for i := range size {
 		nodes[0][i].hash = hashLeaf(leafData(i))
 	}
 	// Compute internal node hashes.
@@ -121,7 +121,7 @@ func (tr *tree) verifyRange(t *testing.T, r *compact.Range, wantMatch bool) {
 	// Naively build the expected list of hashes comprising the compact range.
 	left, right := compact.Decompose(pos, r.End())
 	var hashes [][]byte
-	for lvl := uint(0); lvl < 64; lvl++ {
+	for lvl := range uint(64) {
 		if left&(1<<lvl) != 0 {
 			hashes = append(hashes, tr.nodes[lvl][pos>>lvl].hash)
 			pos += 1 << lvl
@@ -162,7 +162,7 @@ func (tr *tree) verifyAllVisited(t *testing.T, r *compact.Range) {
 
 func TestAppend(t *testing.T) {
 	var sizes []uint64
-	for size := uint64(0); size <= 256; size++ {
+	for size := range uint64(256) + 1 {
 		sizes = append(sizes, size)
 	}
 	sizes = append(sizes, 555, 1040, 5431)
@@ -172,7 +172,7 @@ func TestAppend(t *testing.T) {
 			tree, visit := newTree(t, size)
 			cr := factory.NewEmptyRange(0)
 			tree.verifyRange(t, cr, true)
-			for i := uint64(0); i < size; i++ {
+			for i := range size {
 				if err := cr.Append(tree.leaf(i), visit); err != nil {
 					t.Errorf("Append()=%v", err)
 				}
@@ -188,10 +188,10 @@ func TestGoldenRanges(t *testing.T) {
 	roots := testonly.RootHashes()
 	hashes := testonly.CompactTrees()
 
-	for size, ln := 0, len(inputs); size <= ln; size++ {
+	for size := range len(inputs) + 1 {
 		t.Run(fmt.Sprintf("size:%d", size), func(t *testing.T) {
 			cr := factory.NewEmptyRange(0)
-			for i := 0; i < size; i++ {
+			for i := range size {
 				if err := cr.Append(hashLeaf(inputs[i]), nil); err != nil {
 					t.Fatalf("Append: %v", err)
 				}
@@ -308,7 +308,7 @@ func TestNewRange(t *testing.T) {
 	const numNodes = uint64(123)
 	tree, visit := newTree(t, numNodes)
 	rng := factory.NewEmptyRange(0)
-	for i := uint64(0); i < numNodes; i++ {
+	for i := range numNodes {
 		if err := rng.Append(tree.leaf(i), visit); err != nil {
 			t.Errorf("Append()=%v", err)
 		}
@@ -358,7 +358,7 @@ func TestNewRangeWithStorage(t *testing.T) {
 	}
 
 	cr := factory.NewEmptyRange(0)
-	for i := uint64(0); i < numNodes; i++ {
+	for i := range numNodes {
 		nodes[compact.NewNodeID(0, i)] = tree.leaf(i)
 		if err := cr.Append(tree.leaf(i), func(id compact.NodeID, hash []byte) {
 			nodes[id] = hash
@@ -382,11 +382,11 @@ func TestNewRangeWithStorage(t *testing.T) {
 }
 
 func TestGetRootHash(t *testing.T) {
-	for size := uint64(0); size < 16; size++ {
+	for size := range uint64(16) {
 		t.Run(fmt.Sprintf("size:%d", size), func(t *testing.T) {
 			tree, _ := newTree(t, size)
 			rng := factory.NewEmptyRange(0)
-			for i := uint64(0); i < size; i++ {
+			for i := range size {
 				if err := rng.Append(tree.leaf(i), nil); err != nil {
 					t.Errorf("Append=%v", err)
 				}
@@ -468,7 +468,7 @@ func TestGetRootHashGolden(t *testing.T) {
 	} {
 		t.Run(fmt.Sprintf("size:%v", tc.size), func(t *testing.T) {
 			rng := factory.NewEmptyRange(0)
-			for i := 0; i < tc.size; i++ {
+			for i := range tc.size {
 				data := []byte{byte(i & 0xff), byte((i >> 8) & 0xff)}
 				hash := hashLeaf(data)
 				if err := rng.Append(hash, nil); err != nil {
@@ -528,7 +528,7 @@ func verifyDecompose(begin, end uint64) error {
 	}
 
 	pos := begin
-	for lvl := uint(0); lvl < 64; lvl++ {
+	for lvl := range uint(64) {
 		if size := uint64(1) << lvl; left&size != 0 {
 			if pos%size != 0 {
 				return fmt.Errorf("left: level %d not aligned", lvl)
@@ -552,7 +552,7 @@ func verifyDecompose(begin, end uint64) error {
 
 func TestDecompose(t *testing.T) {
 	const n = uint64(100)
-	for i := uint64(0); i <= n; i++ {
+	for i := range n + 1 {
 		for j := i; j <= n; j++ {
 			if err := verifyDecompose(i, j); err != nil {
 				t.Fatalf("verifyDecompose(%d,%d): %v", i, j, err)
@@ -562,7 +562,7 @@ func TestDecompose(t *testing.T) {
 }
 
 func TestDecomposePow2(t *testing.T) {
-	for p := 0; p < 64; p++ {
+	for p := range 64 {
 		t.Run(fmt.Sprintf("2^%d", p), func(t *testing.T) {
 			end := uint64(1) << uint(p)
 			if err := verifyDecompose(0, end); err != nil {
@@ -578,9 +578,9 @@ func TestDecomposePow2(t *testing.T) {
 
 func BenchmarkAppend(b *testing.B) {
 	const size = 1024
-	for n := 0; n < b.N; n++ {
+	for range b.N {
 		cr := factory.NewEmptyRange(0)
-		for i := 0; i < size; i++ {
+		for i := range size {
 			l := []byte{byte(i & 0xff), byte((i >> 8) & 0xff)}
 			hash := hashLeaf(l)
 			if err := cr.Append(hash, nil); err != nil {

@@ -178,7 +178,7 @@ func invalidInclusionProof(leafIdx, treeSize uint64, proof [][]byte, root, leafH
 	ln := len(proof)
 
 	// Modify single bit in an element of the proof.
-	for i := 0; i < ln; i++ {
+	for i := range ln {
 		wrongProof := prepend(proof)                          // Copy the proof slice.
 		wrongProof[i] = append([]byte(nil), wrongProof[i]...) // But also the modified data.
 		wrongProof[i][0] ^= 8                                 // Flip the bit.
@@ -360,7 +360,7 @@ func invalidConsistencyProof(size1, size2 uint64, root1, root2 []byte, proof [][
 	}
 
 	// Modify single bit in an element of the proof.
-	for i := 0; i < ln; i++ {
+	for i := range ln {
 		wrongProof := prepend(proof)                          // Copy the proof slice.
 		wrongProof[i] = append([]byte(nil), wrongProof[i]...) // But also the modified data.
 		wrongProof[i][0] ^= 16                                // Flip the bit.
