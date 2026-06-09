@@ -82,16 +82,7 @@ func (t *Tree) Hash() []byte {
 // HashAt returns the root hash at the given size.
 // Requires 0 <= size <= Size(), otherwise panics.
 func (t *Tree) HashAt(size uint64) []byte {
-	if size == 0 {
-		return t.hasher.EmptyRoot()
-	}
-	hashes := t.getNodes(compact.RangeNodes(0, size, nil))
-
-	hash := hashes[len(hashes)-1]
-	for i := len(hashes) - 2; i >= 0; i-- {
-		hash = t.hasher.HashChildren(hashes[i], hash)
-	}
-	return hash
+	return t.SubtreeHashAt(0, size)
 }
 
 // SubtreeHashAt returns the root hash of the [start, end) subtree.
