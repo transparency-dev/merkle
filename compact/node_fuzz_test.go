@@ -1,5 +1,3 @@
-//go:build go1.18
-
 package compact
 
 import (
@@ -9,7 +7,7 @@ import (
 // Test that RangeNodes returns a slice of nodes with contiguous coverage.
 // https://github.com/transparency-dev/merkle/blob/main/docs/compact_ranges.md#definition
 func FuzzRangeNodes(f *testing.F) {
-	for begin := 0; begin <= 10; begin++ {
+	for begin := range 10 + 1 {
 		for end := begin; end <= 20; end++ {
 			f.Add(uint64(end), uint64(end))
 		}

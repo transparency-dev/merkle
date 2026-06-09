@@ -101,7 +101,7 @@ func BenchmarkHashChildren(b *testing.B) {
 	h := DefaultHasher
 	l := h.HashLeaf([]byte("one"))
 	r := h.HashLeaf([]byte("or other"))
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_ = h.HashChildren(l, r)
 	}
 }

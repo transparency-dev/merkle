@@ -93,7 +93,7 @@ func TestRangeNodesAppend(t *testing.T) {
 
 func TestGenRangeNodes(t *testing.T) {
 	const size = uint64(512)
-	for begin := uint64(0); begin <= size; begin++ {
+	for begin := range size + 1 {
 		for end := begin; end <= size; end++ {
 			got := RangeNodes(begin, end, nil)
 			want := refRangeNodes(NewNodeID(63, 0), begin, end)
