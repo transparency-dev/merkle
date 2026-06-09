@@ -5,6 +5,7 @@ package testonly
 import (
 	"bytes"
 	"math"
+	"math/bits"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -68,6 +69,45 @@ func FuzzInclusionProofAndVerify(f *testing.F) {
 			t.Error(err)
 		}
 		err = proof.VerifyInclusion(tree.hasher, index, size, tree.LeafHash(index), p, tree.Hash())
+		if err != nil {
+			t.Error(err)
+		}
+	})
+}
+
+// Compute and verify inclusion proofs
+func FuzzSubtreeInclusionProofAndVerify(f *testing.F) {
+	for end := 0; end <= 8; end++ {
+		for start := 0; start <= end; start++ {
+			for index := start; index <= end; index++ {
+				f.Add(uint64(index), uint64(start), uint64(end))
+			}
+		}
+	}
+	f.Fuzz(func(t *testing.T, index, start, end uint64) {
+		if end >= math.MaxUint16 {
+			return
+		}
+		t.Logf("index=%d, start=%d, end=%d", index, start, end)
+		if start >= end {
+			return
+		}
+		if index < start {
+			return
+		}
+		if index >= end {
+			return
+		}
+		if bc := uint64(1) << bits.Len64(end-start-1); start%bc != 0 {
+			return
+		}
+		tree := newTree(genEntries(end))
+		p, err := tree.SubtreeInclusionProof(index, start, end)
+		t.Logf("proof=%v", p)
+		if err != nil {
+			t.Error(err)
+		}
+		err = proof.VerifySubtreeInclusion(tree.hasher, index, start, end, tree.LeafHash(index), p, tree.SubtreeHashAt(start, end))
 		if err != nil {
 			t.Error(err)
 		}

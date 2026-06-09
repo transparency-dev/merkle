@@ -82,10 +82,19 @@ func (t *Tree) Hash() []byte {
 // HashAt returns the root hash at the given size.
 // Requires 0 <= size <= Size(), otherwise panics.
 func (t *Tree) HashAt(size uint64) []byte {
-	if size == 0 {
+	return t.SubtreeHashAt(0, size)
+}
+
+// SubtreeHashAt returns the root hash of the [start, end) subtree.
+// Requires 0 <= start <= end <= Size() otherwise panics.
+func (t *Tree) SubtreeHashAt(start, end uint64) []byte {
+	if start > end || end > t.size {
+		panic("invalid subtree range")
+	}
+	if start == end {
 		return t.hasher.EmptyRoot()
 	}
-	hashes := t.getNodes(compact.RangeNodes(0, size, nil))
+	hashes := t.getNodes(compact.RangeNodes(start, end, nil))
 
 	hash := hashes[len(hashes)-1]
 	for i := len(hashes) - 2; i >= 0; i-- {
@@ -99,6 +108,18 @@ func (t *Tree) HashAt(size uint64) []byte {
 // panic.
 func (t *Tree) InclusionProof(index, size uint64) ([][]byte, error) {
 	nodes, err := proof.Inclusion(index, size)
+	if err != nil {
+		return nil, err
+	}
+	return nodes.Rehash(t.getNodes(nodes.IDs), t.hasher.HashChildren)
+}
+
+// SubtreeInclusionProof returns the inclusion proof for the given leaf index in the
+// [start, end) subtree.
+// It requires end <= Size(), and may panic otherwise.
+// May return and error if the subtree boundaries or the index are not valid.
+func (t *Tree) SubtreeInclusionProof(index, start, end uint64) ([][]byte, error) {
+	nodes, err := proof.SubtreeInclusion(index, start, end)
 	if err != nil {
 		return nil, err
 	}

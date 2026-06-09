@@ -223,7 +223,7 @@ func reverse(ids []compact.NodeID) {
 	}
 }
 
-// isSubTreeValid returns whether a subtree covers a valid range.
+// isSubtreeValid returns whether a subtree covers a valid range.
 // A subtree is valid if there exist a parent tree node to:
 // - all the subtree nodes
 // - no extra node to the left of the subtree
