@@ -139,6 +139,18 @@ func (t *Tree) ConsistencyProof(size1, size2 uint64) ([][]byte, error) {
 	return nodes.Rehash(t.getNodes(nodes.IDs), t.hasher.HashChildren)
 }
 
+// SubtreeConsistencyProof returns the subtree consistency proof between the
+// [start, end) subtree and a parent tree of size |size|.
+// It requires end <= Size(), and size <= Size(). May panic otherwise.
+// May return an error if the subtree boundaries are not valid.
+func (t *Tree) SubtreeConsistencyProof(start, end, size uint64) ([][]byte, error) {
+	nodes, err := proof.SubtreeConsistency(start, end, size)
+	if err != nil {
+		return nil, err
+	}
+	return nodes.Rehash(t.getNodes(nodes.IDs), t.hasher.HashChildren)
+}
+
 func (t *Tree) getNodes(ids []compact.NodeID) [][]byte {
 	hashes := make([][]byte, len(ids))
 	for i, id := range ids {
