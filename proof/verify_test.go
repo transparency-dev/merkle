@@ -64,6 +64,20 @@ type consistencyProbe struct {
 	WantError bool   `json:"wantErr"`
 }
 
+// subtreeConsistencyProbe is a parameter set for subtree consistency proof
+// verification.
+type subtreeConsistencyProbe struct {
+	Start uint64   `json:"start"`
+	End   uint64   `json:"end"`
+	Size  uint64   `json:"size"`
+	Root1 []byte   `json:"root1"`
+	Root2 []byte   `json:"root2"`
+	Proof [][]byte `json:"proof"`
+
+	Desc      string `json:"desc"`
+	WantError bool   `json:"wantErr"`
+}
+
 func TestVerifyInclusionProbes(t *testing.T) {
 	var probes []inclusionProbe
 
@@ -217,5 +231,57 @@ func TestVerifyConsistencyProbes(t *testing.T) {
 
 	if len(wrong) > 0 {
 		t.Errorf("errors verifying consistency probes: \n%d out of %d failures \nError messages: \n%s", len(wrong), len(probes), strings.Join(wrong, "\n"))
+	}
+}
+
+func TestVerifySubtreeConsistencyProbes(t *testing.T) {
+	var probes []subtreeConsistencyProbe
+
+	if err := filepath.WalkDir("../testdata/subtreeconsistency", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if d.IsDir() {
+			return nil
+		}
+
+		if filepath.Ext(d.Name()) != ".json" {
+			return nil
+		}
+
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+
+		var probe subtreeConsistencyProbe
+		if err := json.Unmarshal(data, &probe); err != nil {
+			return fmt.Errorf("failed to parse subtree consistency probe json: %s", err)
+		}
+
+		probes = append(probes, probe)
+
+		return nil
+	}); err != nil {
+		t.Errorf("failed to read subtree consistency probes: %s", err)
+	}
+
+	var wrong []string
+	for _, p := range probes {
+		err := VerifySubtreeConsistency(rfc6962.DefaultHasher, p.Start, p.End, p.Size, p.Proof, p.Root1, p.Root2)
+		if p.WantError && err == nil {
+			wrong = append(wrong, fmt.Sprintf("expected error but didn't get one: %s", p.Desc))
+			continue
+		}
+
+		if !p.WantError && err != nil {
+			wrong = append(wrong, fmt.Sprintf("unexpected error: %s, %s", p.Desc, err))
+			continue
+		}
+	}
+
+	if len(wrong) > 0 {
+		t.Errorf("errors verifying subtree consistency probes: \n%d out of %d failures \nError messages: \n%s", len(wrong), len(probes), strings.Join(wrong, "\n"))
 	}
 }
