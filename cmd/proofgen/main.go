@@ -403,9 +403,9 @@ func staticConsistencyProbes(dir string) error {
 		{0, 0, root1, root2, proof1, "sizes are equal (zero) but roots are not", true},
 		{1, 1, root1, root2, proof1, "sizes are equal (one) but roots are not", true},
 		// Sizes that are always consistent.
-		{0, 0, root1, root1, proof1, "sizes are equal and proof is not empty where both sizes are zero", false},
+		{0, 0, root1, root1, proof1, "sizes are equal and proof is empty where both sizes are zero", false},
 		{0, 1, root1, root2, proof1, "size1 is zero and does not equal size2", true},
-		{1, 1, root2, root2, proof1, "sizes are equal and proof is not empty where both sizes are one", false},
+		{1, 1, root2, root2, proof1, "sizes are equal and proof is empty where both sizes are one", false},
 		// Time travel to the past.
 		{1, 0, root1, root2, proof1, "size1 is greater than size2", true},
 		{2, 1, root1, root2, proof1, "size1 is greater than size2 again", true},
