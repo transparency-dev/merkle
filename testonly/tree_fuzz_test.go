@@ -3,7 +3,6 @@ package testonly
 import (
 	"bytes"
 	"math"
-	"math/bits"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -86,8 +85,7 @@ func FuzzSubtreeInclusionProofAndVerify(f *testing.F) {
 		if end >= math.MaxUint16 {
 			return
 		}
-		t.Logf("index=%d, start=%d, end=%d", index, start, end)
-		if start >= end {
+		if err := isSubtreeValid(start, end); err != nil {
 			return
 		}
 		if index < start {
@@ -96,9 +94,7 @@ func FuzzSubtreeInclusionProofAndVerify(f *testing.F) {
 		if index >= end {
 			return
 		}
-		if bc := uint64(1) << bits.Len64(end-start-1); start%bc != 0 {
-			return
-		}
+		t.Logf("index=%d, start=%d, end=%d", index, start, end)
 		tree := newTree(genEntries(end))
 		p, err := tree.SubtreeInclusionProof(index, start, end)
 		t.Logf("proof=%v", p)

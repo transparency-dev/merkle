@@ -15,6 +15,9 @@
 package testonly
 
 import (
+	"fmt"
+	"math/bits"
+
 	"github.com/transparency-dev/merkle"
 	"github.com/transparency-dev/merkle/compact"
 	"github.com/transparency-dev/merkle/proof"
@@ -142,4 +145,39 @@ func (t *Tree) getNodes(ids []compact.NodeID) [][]byte {
 		hashes[i] = t.hashes[id.Level][id.Index]
 	}
 	return hashes
+}
+
+// isSubtreeValid returns whether a subtree covers a valid range.
+// A subtree is valid if there exist a parent tree node to:
+// - all the subtree nodes
+// - no extra node to the left of the subtree
+// - potentially extra nodes to the right of the subtree
+func isSubtreeValid(start, end uint64) error {
+	if start >= end {
+		return fmt.Errorf("start %d must be strictly less than end %d", start, end)
+	}
+	if start == 0 {
+		return nil
+	}
+
+	l := end - start
+
+	// special-case large subtree to avoid panic
+	if l > uint64(1)<<63 {
+		return fmt.Errorf("start %d must be 0 when subtree length %d > 1<<63", start, l)
+	}
+	if bc := bitCeil(l); start&(bc-1) != 0 {
+		return fmt.Errorf("start %d not a multiple of bit_ceil(end - start) = %d", start, bc)
+	}
+
+	return nil
+}
+
+// bitCeil returns the smallest power of 2 larger than or equal to n.
+// MUST NOT be used with n larger than uint64(1)<<63.
+func bitCeil(n uint64) uint64 {
+	if n <= 1 {
+		return 1
+	}
+	return uint64(1) << bits.Len64(n-1)
 }

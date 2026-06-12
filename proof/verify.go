@@ -59,14 +59,11 @@ func VerifyInclusion(hasher merkle.LogHasher, index, size uint64, leafHash []byt
 //   - start to be a multiple of the smallest power of two greater than or equal to
 //     (end - start)
 func VerifySubtreeInclusion(hasher merkle.LogHasher, index, start, end uint64, leafHash []byte, proof [][]byte, root []byte) error {
-	if start >= end {
-		return fmt.Errorf("start %d greater than or equal to end %d", start, end)
+	if err := isSubtreeValid(start, end); err != nil {
+		return fmt.Errorf("subtree invalid: %v", err)
 	}
 	if index < start || index >= end {
 		return fmt.Errorf("index %d out of bounds for subtree [%d, %d)", index, start, end)
-	}
-	if err := isSubtreeValid(start, end); err != nil {
-		return fmt.Errorf("subtree invalid: %v", err)
 	}
 	calcRoot, err := RootFromInclusionProof(hasher, index-start, end-start, leafHash, proof)
 	if err != nil {

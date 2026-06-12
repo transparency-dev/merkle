@@ -59,14 +59,11 @@ func Inclusion(index, size uint64) (Nodes, error) {
 //   - start to be a multiple of the smallest power of two greater than or equal to
 //     (end - start)
 func SubtreeInclusion(index, start, end uint64) (Nodes, error) {
-	if start >= end {
-		return Nodes{}, fmt.Errorf("start %d greater than or equal to end %d", start, end)
+	if err := isSubtreeValid(start, end); err != nil {
+		return Nodes{}, fmt.Errorf("subtree invalid: %v", err)
 	}
 	if index < start || index >= end {
 		return Nodes{}, fmt.Errorf("index %d out of bounds for subtree [%d, %d)", index, start, end)
-	}
-	if err := isSubtreeValid(start, end); err != nil {
-		return Nodes{}, fmt.Errorf("subtree invalid: %v", err)
 	}
 
 	// Shift the subtree to the left, such that it starts at 0.
@@ -229,20 +226,27 @@ func reverse(ids []compact.NodeID) {
 // - no extra node to the left of the subtree
 // - potentially extra nodes to the right of the subtree
 func isSubtreeValid(start, end uint64) error {
-	l := end - start
+	if start >= end {
+		return fmt.Errorf("start %d must be strictly less than end %d", start, end)
+	}
 	if start == 0 {
 		return nil
-	} else if l > uint64(1)<<63 {
-		// special-case large subtree to avoid panic
-		return fmt.Errorf("start %d must be 0 when subtree length %d > 1<<63. ", start, l)
 	}
-	if bc := bitCeil(l); start%bc != 0 {
+
+	l := end - start
+
+	// special-case large subtree to avoid panic
+	if l > uint64(1)<<63 {
+		return fmt.Errorf("start %d must be 0 when subtree length %d > 1<<63", start, l)
+	}
+	if bc := bitCeil(l); start&(bc-1) != 0 {
 		return fmt.Errorf("start %d not a multiple of bit_ceil(end - start) = %d", start, bc)
 	}
+
 	return nil
 }
 
-// bitCeil returns the smallest power of 2 larger than n.
+// bitCeil returns the smallest power of 2 larger than or equal to n.
 // MUST NOT be used with n larger than uint64(1)<<63.
 func bitCeil(n uint64) uint64 {
 	if n <= 1 {
