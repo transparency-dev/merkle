@@ -82,12 +82,15 @@ func SubtreeInclusion(index, start, end uint64) (Nodes, error) {
 
 // Consistency returns the information on how to fetch and construct a
 // consistency proof between the two given tree sizes of a log Merkle tree. It
-// requires 0 <= size1 <= size2.
+// requires 0 < size1 <= size2.
 func Consistency(size1, size2 uint64) (Nodes, error) {
 	if size1 > size2 {
 		return Nodes{}, fmt.Errorf("tree size %d > %d", size1, size2)
 	}
-	if size1 == size2 || size1 == 0 {
+	if size1 == 0 {
+		return Nodes{}, fmt.Errorf("consistency proof from empty tree is meaningless")
+	}
+	if size1 == size2 {
 		return Nodes{IDs: []compact.NodeID{}}, nil
 	}
 

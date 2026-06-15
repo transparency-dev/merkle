@@ -28,7 +28,7 @@ func FuzzConsistencyProofAndVerify(f *testing.F) {
 		if begin > end || end > size {
 			return
 		}
-		if begin == 0 && end > 0 {
+		if begin == 0 {
 			return
 		}
 		tree := newTree(genEntries(size))
@@ -174,6 +174,9 @@ func FuzzConsistencyProofAgainstReferenceImplementation(f *testing.F) {
 		}
 		t.Logf("size=%d, begin=%d, end=%d", size, begin, end)
 		if begin > end || end > size {
+			return
+		}
+		if begin == 0 {
 			return
 		}
 		entries := genEntries(size)

@@ -112,13 +112,13 @@ func RootFromConsistencyProof(hasher merkle.LogHasher, size1, size2 uint64, proo
 	switch {
 	case size2 < size1:
 		return nil, fmt.Errorf("size2 (%d) < size1 (%d)", size1, size2)
+	case size1 == 0:
+		return nil, errors.New("consistency proof from empty tree is meaningless")
 	case size1 == size2:
 		if len(proof) > 0 {
 			return nil, errors.New("size1=size2, but proof is not empty")
 		}
 		return root1, nil
-	case size1 == 0:
-		return nil, errors.New("consistency proof from empty tree is meaningless")
 	case len(proof) == 0:
 		return nil, errors.New("empty proof")
 	}
