@@ -222,13 +222,12 @@ func rootFromSubtreeConsistencyProof(hasher merkle.LogHasher, start, end, size u
 	// belong to the subtree. We must verify that these nodes chain correctly to
 	// the argument subtree root.
 	if pStart == 1 {
+		// Helper to only chain nodes to the right of |start|, from level |shift|.
 		rightMask := (end - 1) >> uint(shift)
 		leftMask := start >> uint(shift)
-		// Clamp the proof such that it only includes nodes inside the subtree.
-		clampedLen := min(bits.Len64(rightMask^leftMask), inner)
 		// First, partially reconstruct the subtree root (hash1) by chaining left siblings
-		// from the inner part of the proof, and inside the subtree.
-		hash1 := chainInnerRight(hasher, seed, proof[:clampedLen], rightMask)
+		// from the inner part of the proof, skipping right siblings which lie outside the subtree.
+		hash1 := chainInnerRight(hasher, seed, proof[:inner], leftMask, rightMask)
 
 		// Then, hash the remaining border nodes that belong to the subtree.
 		if border > 0 {
@@ -242,6 +241,7 @@ func rootFromSubtreeConsistencyProof(hasher merkle.LogHasher, start, end, size u
 	}
 
 	// Verify the second root.
+	// First, chain the bottom part of the proof.
 	rightMask := (end - 1) >> uint(shift) // Start chaining from level |shift|
 	hash2 := chainInner(hasher, seed, proof[:inner], rightMask)
 	// Then, chain the upper part of the proof.
@@ -282,11 +282,16 @@ func chainInner(hasher merkle.LogHasher, seed []byte, proof [][]byte, index uint
 }
 
 // chainInnerRight computes a subtree hash like chainInner, but only takes
-// hashes to the left from the path into consideration, which effectively means
-// the result is a hash of the corresponding earlier version of this subtree.
-func chainInnerRight(hasher merkle.LogHasher, seed []byte, proof [][]byte, index uint64) []byte {
+// hashes within [leftMask, rightMask]. That effectively means taking only
+// hashes to the left of the path the proof follows, which results in hashing
+// the corresponding earlier version of this subtree.
+func chainInnerRight(hasher merkle.LogHasher, seed []byte, proof [][]byte, leftMask, rightMask uint64) []byte {
 	for i, h := range proof {
-		if (index>>uint(i))&1 == 1 {
+		// Return as soon as we're outside of leftMask.
+		if rightMask>>uint(i) == leftMask>>uint(i) {
+			return seed
+		}
+		if (rightMask>>uint(i))&1 == 1 {
 			seed = hasher.HashChildren(h, seed)
 		}
 	}
