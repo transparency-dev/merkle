@@ -84,7 +84,7 @@ func TestTreeHashAt(t *testing.T) {
 	for size := range len(entries) + 1 {
 		test(fmt.Sprintf("size:%d", size), entries[:size])
 	}
-	test("generated", genEntries(256))
+	test("generated:256", genEntries(256))
 }
 
 func TestTreeInclusionProof(t *testing.T) {
@@ -105,9 +105,43 @@ func TestTreeInclusionProof(t *testing.T) {
 		})
 	}
 
-	test("generated", genEntries(256))
+	test("generated:256", genEntries(256))
 	entries := LeafInputs()
 	for size := range len(entries) {
+		test(fmt.Sprintf("golden:%d", size), entries[:size])
+	}
+}
+
+func TestSubtreeInclusionProof(t *testing.T) {
+	test := func(desc string, entries [][]byte) {
+		for end := uint64(1); end < uint64(len(entries)); end++ {
+			for start := range end {
+				if err := isSubtreeValid(start, end); err != nil {
+					continue
+				}
+				mt := newTree(entries)
+				t.Run(fmt.Sprintf("%s:%d:%d", desc, start, end), func(t *testing.T) {
+					t.Parallel()
+					subtreeEntries := entries[start:end]
+					for index := start; index < end; index++ {
+						got, err := mt.SubtreeInclusionProof(index, start, end)
+						if err != nil {
+							t.Fatalf("SubtreeInclusionProof(%d, %d, %d): %v", index, start, end, err)
+						}
+						want := refInclusionProof(subtreeEntries, index-start, mt.hasher)
+						if diff := cmp.Diff(got, want, cmpopts.EquateEmpty()); diff != "" {
+							t.Fatalf("SubtreeInclusionProof(%d, %d, %d): diff (-got +want)\n%s", index, start, end, diff)
+						}
+					}
+				})
+			}
+		}
+	}
+
+	// Use smaller trees with subtrees to reduce test duration.
+	test("generated:128", genEntries(128))
+	entries := LeafInputs()
+	for size := 1; size <= len(entries); size++ {
 		test(fmt.Sprintf("golden:%d", size), entries[:size])
 	}
 }
