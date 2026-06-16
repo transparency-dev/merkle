@@ -104,6 +104,20 @@ func VerifyConsistency(hasher merkle.LogHasher, size1, size2 uint64, proof [][]b
 	return verifyMatch(hash2, root2)
 }
 
+// VerifySubtreeConsistency checks that the passed-in subtree consistency proof
+// is valid between the passed in subtree indices and parent tree size, with
+// respect to the corresponding subtree root node hash. It Requires:
+//   - 0 <= start < end <= size.
+//   - start to be a multiple of the smallest power of two greater than or equal to
+//     (end - start)
+func VerifySubtreeConsistency(hasher merkle.LogHasher, start, end, size uint64, proof [][]byte, root1, root2 []byte) error {
+	hash2, err := RootFromSubtreeConsistencyProof(hasher, start, end, size, proof, root1)
+	if err != nil {
+		return err
+	}
+	return verifyMatch(hash2, root2)
+}
+
 // RootFromConsistencyProof calculates the expected root hash for a tree of the
 // given size2, provided a tree of size1 with root1, and a consistency proof.
 // Requires 0 < size1 <= size2.
@@ -122,36 +136,80 @@ func RootFromConsistencyProof(hasher merkle.LogHasher, size1, size2 uint64, proo
 	case len(proof) == 0:
 		return nil, errors.New("empty proof")
 	}
+	return RootFromSubtreeConsistencyProof(hasher, 0, size1, size2, proof, root1)
+}
 
-	inner, border := decompInclProof(size1-1, size2)
-	shift := bits.TrailingZeros64(size1)
-	inner -= shift // Note: shift < inner if size1 < size2.
+// RootFromSubtreeConsistencyProof calculates the expected root hash for a tree
+// of the given size, provided with a subtree [start, end), its root and a
+// consistency proof.
+// It requires:
+//   - 0 <= start < end <= size.
+//   - start to be a multiple of the smallest power of two greater than or equal to
+//     (end - start)
+func RootFromSubtreeConsistencyProof(hasher merkle.LogHasher, start, end, size uint64, proof [][]byte, subRoot []byte) ([]byte, error) {
+	err := isSubtreeValid(start, end)
+	switch {
+	case err != nil:
+		return nil, fmt.Errorf("subtree invalid: %v", err)
+	case size < end:
+		return nil, fmt.Errorf("size (%d) < end (%d)", size, end)
+	case start == 0 && size == end:
+		if len(proof) > 0 {
+			return nil, errors.New("start=0 and end=size, but proof is not empty")
+		}
+		return subRoot, nil
+	case len(proof) == 0:
+		return nil, errors.New("empty proof")
+	// If the right end of the subtree overlaps with the right end of the tree,
+	// compute the tree root directly.
+	case end == size:
+		level := bits.Len64((end - 1) ^ start) // Height of the subtree.
+		index := start >> level
+		want := bits.OnesCount64(index)
+		if got := len(proof); got != want {
+			return nil, fmt.Errorf("wrong proof size %d, want %d", got, want)
+		}
+		return chainBorderRight(hasher, subRoot, proof), nil
+	}
+
+	inner, border := decompInclProof(end-1, size)
+	shift := bits.TrailingZeros64(end - start)
+	inner -= shift // Note: shift < inner if end < size.
 
 	// The proof includes the root hash for the sub-tree of size 2^shift.
-	seed, start := proof[0], 1
-	if size1 == 1<<uint(shift) { // Unless size1 is that very 2^shift.
-		seed, start = root1, 0
+	seed, pStart := proof[0], 1
+	// Unless the subtree is that very 2^shift.
+	if (end - start) == 1<<uint(shift) {
+		seed, pStart = subRoot, 0
 	}
-	if got, want := len(proof), start+inner+border; got != want {
+	if got, want := len(proof), pStart+inner+border; got != want {
 		return nil, fmt.Errorf("wrong proof size %d, want %d", got, want)
 	}
-	proof = proof[start:]
+	proof = proof[pStart:]
 	// Now len(proof) == inner+border, and proof is effectively a suffix of
-	// inclusion proof for entry |size1-1| in a tree of size |size2|.
+	// the inclusion proof for entry |end-1| in a tree of size |size|.
 
 	// Verify the first root, if included in the proof.
 	if start != 0 {
-		mask := (size1 - 1) >> uint(shift) // Start chaining from level |shift|.
-		hash1 := chainInnerRight(hasher, seed, proof[:inner], mask)
-		hash1 = chainBorderRight(hasher, hash1, proof[inner:])
-		if err := verifyMatch(hash1, root1); err != nil {
+		rightMask := (end - 1) >> uint(shift)
+		leftMask := start >> uint(shift)
+		clampedLen := bits.Len64(rightMask ^ leftMask)
+		if clampedLen > inner {
+			clampedLen = inner
+		}
+		hash1 := chainInnerRight(hasher, seed, proof[:clampedLen], rightMask)
+		if border > 0 {
+			k := border - bits.OnesCount64(start>>uint(inner))
+			hash1 = chainBorderRight(hasher, hash1, proof[inner:inner+k])
+		}
+		if err := verifyMatch(hash1, subRoot); err != nil {
 			return nil, err
 		}
 	}
 
 	// Verify the second root.
-	mask := (size1 - 1) >> uint(shift) // Start chaining from level |shift|.
-	hash2 := chainInner(hasher, seed, proof[:inner], mask)
+	rightMask := (end - 1) >> uint(shift) // Start chaining from level |shift|
+	hash2 := chainInner(hasher, seed, proof[:inner], rightMask)
 	hash2 = chainBorderRight(hasher, hash2, proof[inner:])
 	return hash2, nil
 }
