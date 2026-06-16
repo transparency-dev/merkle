@@ -139,13 +139,16 @@ func RootFromConsistencyProof(hasher merkle.LogHasher, size1, size2 uint64, proo
 	return rootFromSubtreeConsistencyProof(hasher, 0, size1, size2, proof, root1)
 }
 
-// RootFromSubtreeConsistencyProof calculates the expected root hash for a tree
-// of the given size, provided with a subtree [start, end), its root and a
-// consistency proof.
+// RootFromSubtreeConsistencyProof calculates the expected root hash for a
+// parent tree of the given size, from a subtree [start, end) with its root and
+// a consistency proof.
+//
 // It requires:
 //   - 0 <= start < end <= size.
 //   - start to be a multiple of the smallest power of two greater than or equal to
 //     (end - start)
+//
+// Returns an error if the proof does not hash to the provided subtree root.
 func RootFromSubtreeConsistencyProof(hasher merkle.LogHasher, start, end, size uint64, proof [][]byte, subRoot []byte) ([]byte, error) {
 	err := isSubtreeValid(start, end)
 	switch {
@@ -161,28 +164,21 @@ func RootFromSubtreeConsistencyProof(hasher merkle.LogHasher, start, end, size u
 	case len(proof) == 0:
 		return nil, errors.New("empty proof")
 	}
-	return rootFromSubtreeConsistencyProof(hasher, start, end, size, proof, root1)
+	return rootFromSubtreeConsistencyProof(hasher, start, end, size, proof, subRoot)
 }
 
-func rootFromSubtreeConsistencyProof(hasher merkle.LogHasher, start, end, size uint64, proof [][]byte, root1 []byte) ([]byte, error) {
-	err := isSubtreeValid(start, end)
-	switch {
-	case err != nil:
-		return nil, fmt.Errorf("subtree invalid: %v", err)
-	case size < end:
-		return nil, fmt.Errorf("size (%d) < end (%d)", size, end)
-	case start == 0 && size == end:
-		if len(proof) > 0 {
-			return nil, errors.New("start=0 and end=size, but proof is not empty")
-		}
-		return root1, nil
-	case len(proof) == 0:
-		return nil, errors.New("empty proof")
-	// If the right end of the subtree overlaps with the right end of the tree,
-	// compute the tree root directly.
-	case end == size:
+func rootFromSubtreeConsistencyProof(hasher merkle.LogHasher, start, end, size uint64, proof [][]byte, subRoot []byte) ([]byte, error) {
+	// If the right end of the subtree overlaps with the right end of the parent
+	// tree, the proof allows reconstructing the tree root directly from the
+	// argument subtree root |subRoot|.
+	if end == size {
+		// Find the root of the subtree.
+		// xor trims the common prefix between the first and last entry. The bit len
+		// of the result is the height of the subtree.
 		level := bits.Len64((end - 1) ^ start) // Height of the subtree.
 		index := start >> level
+		// To reconstruct the root from the subtree root, we need one left sibling
+		// node for each level where the subtree's ancestor is a right child.
 		want := bits.OnesCount64(index)
 		if got := len(proof); got != want {
 			return nil, fmt.Errorf("wrong proof size %d, want %d", got, want)
@@ -190,13 +186,28 @@ func rootFromSubtreeConsistencyProof(hasher merkle.LogHasher, start, end, size u
 		return chainBorderRight(hasher, subRoot, proof), nil
 	}
 
-	inner, border := decompInclProof(end-1, size)
+	// Otherwise, we need to:
+	//   - Verify that nodes in the proof that belongs to the subtree are consistent
+	//     with the argument subtree root |subRoot|.
+	//   - Reconstruct the parent tree root from the the argument subtree root
+	//     grown into a subtree of the parent tree of size |size|.
+	//
+	// Split the proof in two, where paths to leaves |end-1| and |size-1| diverge.
+	forkLevel, border := decompInclProof(end-1, size)
+	// Height of the rightmost full subtree within the argument subtree.
+	// The proof starts at this level.
 	shift := bits.TrailingZeros64(end - start)
-	inner -= shift // Note: shift < inner if end < size.
+	// Number of level between the root of that subtree and the end the the first
+	// part of the proof.
+	inner := forkLevel - shift // Note: shift < inner if end < size.
 
-	// The proof includes the root hash for the sub-tree of size 2^shift.
+	// The first node of the proof is the root of the rightmost subtree within
+	// the argument subtree.
 	seed, pStart := proof[0], 1
-	// Unless the subtree is that very 2^shift.
+	// Unless the argument subtree is full, in which case that rightmost subtree
+	// is the argument subtree itself. Its root is not included in the proof
+	// since a client verifying a subtree inclusion proof is expected to already
+	// know what the root of that subtree is.
 	if (end - start) == 1<<uint(shift) {
 		seed, pStart = subRoot, 0
 	}
@@ -207,14 +218,22 @@ func rootFromSubtreeConsistencyProof(hasher merkle.LogHasher, start, end, size u
 	// Now len(proof) == inner+border, and proof is effectively a suffix of
 	// the inclusion proof for entry |end-1| in a tree of size |size|.
 
-	// Verify the first root, if included in the proof.
-	if start != 0 {
+	// If the argument subtree is not full, the proof includes somes nodes that
+	// belong to the subtree. We must verify that these nodes chain correctly to
+	// the argument subtree root.
+	if pStart == 1 {
 		rightMask := (end - 1) >> uint(shift)
 		leftMask := start >> uint(shift)
+		// Clamp the proof such that it only includes nodes inside the subtree.
 		clampedLen := min(bits.Len64(rightMask^leftMask), inner)
+		// First, partially reconstruct the subtree root (hash1) by chaining left siblings
+		// from the inner part of the proof, and inside the subtree.
 		hash1 := chainInnerRight(hasher, seed, proof[:clampedLen], rightMask)
+
+		// Then, hash the remaining border nodes that belong to the subtree.
 		if border > 0 {
-			k := border - bits.OnesCount64(start>>uint(inner))
+			// Only take border nodes that are to the right of |start| (inside the subtree).
+			k := border - bits.OnesCount64(start>>uint(forkLevel))
 			hash1 = chainBorderRight(hasher, hash1, proof[inner:inner+k])
 		}
 		if err := verifyMatch(hash1, subRoot); err != nil {
@@ -225,6 +244,7 @@ func rootFromSubtreeConsistencyProof(hasher merkle.LogHasher, start, end, size u
 	// Verify the second root.
 	rightMask := (end - 1) >> uint(shift) // Start chaining from level |shift|
 	hash2 := chainInner(hasher, seed, proof[:inner], rightMask)
+	// Then, chain the upper part of the proof.
 	hash2 = chainBorderRight(hasher, hash2, proof[inner:])
 	return hash2, nil
 }
@@ -241,6 +261,8 @@ func decompInclProof(index, size uint64) (int, int) {
 }
 
 func innerProofSize(index, size uint64) int {
+	// Height of the first node where the paths of leaves at |index| and |size-1|
+	// diverge.
 	return bits.Len64(index ^ (size - 1))
 }
 
