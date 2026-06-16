@@ -4,6 +4,6 @@
   "root1": "ZG9uJ3QgY2FyZSAx",
   "root2": "ZG9uJ3QgY2FyZSAx",
   "proof": [],
-  "desc": "sizes are equal and proof is empty where both sizes are zero",
+  "desc": "sizes are equal (zero) and proof is empty",
   "wantErr": false
 }

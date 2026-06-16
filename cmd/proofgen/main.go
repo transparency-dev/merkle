@@ -275,16 +275,16 @@ func staticInclusionProbes(rootDir string) error {
 }
 
 func writeInclusionProbe(dir string, probe inclusionProbe) error {
-	fileName := strings.ReplaceAll(probe.Desc, " ", "-") + ".json"
+	fn := fileName(probe.Desc)
 
 	probeJson, err := json.MarshalIndent(probe, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshaling probe: %s", err)
 	}
 
-	fileLocation := filepath.Join(dir, fileName)
+	fileLocation := filepath.Join(dir, fn)
 	if err := os.WriteFile(fileLocation, probeJson, 0644); err != nil {
-		return fmt.Errorf("writing probe: %s: %s", fileName, err)
+		return fmt.Errorf("writing probe: %s: %s", fn, err)
 	}
 
 	return nil
@@ -431,16 +431,16 @@ func staticConsistencyProbes(dir string) error {
 }
 
 func writeConsistencyProbe(dir string, probe consistencyProbe) error {
-	fileName := strings.ReplaceAll(probe.Desc, " ", "-") + ".json"
+	fn := fileName(probe.Desc)
 
 	probeJson, err := json.MarshalIndent(probe, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshaling probe: %s", err)
 	}
 
-	fileLocation := filepath.Join(dir, fileName)
+	fileLocation := filepath.Join(dir, fn)
 	if err := os.WriteFile(fileLocation, probeJson, 0644); err != nil {
-		return fmt.Errorf("writing probe: %s: %s", fileName, err)
+		return fmt.Errorf("writing probe: %s: %s", fn, err)
 	}
 
 	return nil
@@ -465,6 +465,14 @@ func dh(h string, expLen int) []byte {
 		log.Fatalf("decode %q: len=%d, want %d", h, got, expLen)
 	}
 	return r
+}
+
+func fileName(n string) string {
+	r := strings.NewReplacer(
+		"(", "",
+		")", "",
+		" ", "-")
+	return r.Replace(n) + ".json"
 }
 
 func main() {
