@@ -139,15 +139,18 @@ func RootFromConsistencyProof(hasher merkle.LogHasher, size1, size2 uint64, proo
 	// Now len(proof) == inner+border, and proof is effectively a suffix of
 	// inclusion proof for entry |size1-1| in a tree of size |size2|.
 
-	// Verify the first root.
-	mask := (size1 - 1) >> uint(shift) // Start chaining from level |shift|.
-	hash1 := chainInnerRight(hasher, seed, proof[:inner], mask)
-	hash1 = chainBorderRight(hasher, hash1, proof[inner:])
-	if err := verifyMatch(hash1, root1); err != nil {
-		return nil, err
+	// Verify the first root, if included in the proof.
+	if start != 0 {
+		mask := (size1 - 1) >> uint(shift) // Start chaining from level |shift|.
+		hash1 := chainInnerRight(hasher, seed, proof[:inner], mask)
+		hash1 = chainBorderRight(hasher, hash1, proof[inner:])
+		if err := verifyMatch(hash1, root1); err != nil {
+			return nil, err
+		}
 	}
 
 	// Verify the second root.
+	mask := (size1 - 1) >> uint(shift) // Start chaining from level |shift|.
 	hash2 := chainInner(hasher, seed, proof[:inner], mask)
 	hash2 = chainBorderRight(hasher, hash2, proof[inner:])
 	return hash2, nil
