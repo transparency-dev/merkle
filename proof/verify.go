@@ -136,7 +136,7 @@ func RootFromConsistencyProof(hasher merkle.LogHasher, size1, size2 uint64, proo
 	case len(proof) == 0:
 		return nil, errors.New("empty proof")
 	}
-	return RootFromSubtreeConsistencyProof(hasher, 0, size1, size2, proof, root1)
+	return rootFromSubtreeConsistencyProof(hasher, 0, size1, size2, proof, root1)
 }
 
 // RootFromSubtreeConsistencyProof calculates the expected root hash for a tree
@@ -158,6 +158,24 @@ func RootFromSubtreeConsistencyProof(hasher merkle.LogHasher, start, end, size u
 			return nil, errors.New("start=0 and end=size, but proof is not empty")
 		}
 		return subRoot, nil
+	case len(proof) == 0:
+		return nil, errors.New("empty proof")
+	}
+	return rootFromSubtreeConsistencyProof(hasher, start, end, size, proof, root1)
+}
+
+func rootFromSubtreeConsistencyProof(hasher merkle.LogHasher, start, end, size uint64, proof [][]byte, root1 []byte) ([]byte, error) {
+	err := isSubtreeValid(start, end)
+	switch {
+	case err != nil:
+		return nil, fmt.Errorf("subtree invalid: %v", err)
+	case size < end:
+		return nil, fmt.Errorf("size (%d) < end (%d)", size, end)
+	case start == 0 && size == end:
+		if len(proof) > 0 {
+			return nil, errors.New("start=0 and end=size, but proof is not empty")
+		}
+		return root1, nil
 	case len(proof) == 0:
 		return nil, errors.New("empty proof")
 	// If the right end of the subtree overlaps with the right end of the tree,
@@ -193,10 +211,7 @@ func RootFromSubtreeConsistencyProof(hasher merkle.LogHasher, start, end, size u
 	if start != 0 {
 		rightMask := (end - 1) >> uint(shift)
 		leftMask := start >> uint(shift)
-		clampedLen := bits.Len64(rightMask ^ leftMask)
-		if clampedLen > inner {
-			clampedLen = inner
-		}
+		clampedLen := min(bits.Len64(rightMask^leftMask), inner)
 		hash1 := chainInnerRight(hasher, seed, proof[:clampedLen], rightMask)
 		if border > 0 {
 			k := border - bits.OnesCount64(start>>uint(inner))
