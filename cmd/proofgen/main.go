@@ -275,16 +275,16 @@ func staticInclusionProbes(rootDir string) error {
 }
 
 func writeInclusionProbe(dir string, probe inclusionProbe) error {
-	fileName := strings.ReplaceAll(probe.Desc, " ", "-") + ".json"
+	fn := fileName(probe.Desc)
 
 	probeJson, err := json.MarshalIndent(probe, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshaling probe: %s", err)
 	}
 
-	fileLocation := filepath.Join(dir, fileName)
+	fileLocation := filepath.Join(dir, fn)
 	if err := os.WriteFile(fileLocation, probeJson, 0644); err != nil {
-		return fmt.Errorf("writing probe: %s: %s", fileName, err)
+		return fmt.Errorf("writing probe: %s: %s", fn, err)
 	}
 
 	return nil
@@ -403,9 +403,9 @@ func staticConsistencyProbes(dir string) error {
 		{0, 0, root1, root2, proof1, "sizes are equal (zero) but roots are not", true},
 		{1, 1, root1, root2, proof1, "sizes are equal (one) but roots are not", true},
 		// Sizes that are always consistent.
-		{0, 0, root1, root1, proof1, "sizes are equal and proof is not empty where both sizes are zero", false},
+		{0, 0, root1, root1, proof1, "sizes are equal (zero) and proof is empty", false},
 		{0, 1, root1, root2, proof1, "size1 is zero and does not equal size2", true},
-		{1, 1, root2, root2, proof1, "sizes are equal and proof is not empty where both sizes are one", false},
+		{1, 1, root2, root2, proof1, "sizes are equal (one) and proof is empty", false},
 		// Time travel to the past.
 		{1, 0, root1, root2, proof1, "size1 is greater than size2", true},
 		{2, 1, root1, root2, proof1, "size1 is greater than size2 again", true},
@@ -431,16 +431,16 @@ func staticConsistencyProbes(dir string) error {
 }
 
 func writeConsistencyProbe(dir string, probe consistencyProbe) error {
-	fileName := strings.ReplaceAll(probe.Desc, " ", "-") + ".json"
+	fn := fileName(probe.Desc)
 
 	probeJson, err := json.MarshalIndent(probe, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshaling probe: %s", err)
 	}
 
-	fileLocation := filepath.Join(dir, fileName)
+	fileLocation := filepath.Join(dir, fn)
 	if err := os.WriteFile(fileLocation, probeJson, 0644); err != nil {
-		return fmt.Errorf("writing probe: %s: %s", fileName, err)
+		return fmt.Errorf("writing probe: %s: %s", fn, err)
 	}
 
 	return nil
@@ -465,6 +465,14 @@ func dh(h string, expLen int) []byte {
 		log.Fatalf("decode %q: len=%d, want %d", h, got, expLen)
 	}
 	return r
+}
+
+func fileName(n string) string {
+	r := strings.NewReplacer(
+		"(", "",
+		")", "",
+		" ", "-")
+	return r.Replace(n) + ".json"
 }
 
 func main() {
