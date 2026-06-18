@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"math/bits"
 	"os"
 	"path/filepath"
@@ -340,16 +341,21 @@ func toSubtreeInclusionProbe(p inclusionProbe) subtreeInclusionProbe {
 func shiftSubtreeInclusionProbe(p subtreeInclusionProbe) subtreeInclusionProbe {
 	shift := bitCeil(p.End - p.Start)
 	desc := p.Desc + " - subtree"
-	leafIdx := p.LeafIdx
-	if leafIdx <= ^uint64(0)-shift {
+	leafIdx, start, end := p.LeafIdx, p.Start, p.End
+	// Shift indices independently to allow for pathological cases.
+	if p.Start <= math.MaxUint64-shift {
+		start += shift
+	}
+	if p.LeafIdx <= math.MaxUint64-shift {
 		leafIdx += shift
-	} else {
-		leafIdx = ^uint64(0)
+	}
+	if p.End <= math.MaxUint64-shift {
+		end += shift
 	}
 	return subtreeInclusionProbe{
 		LeafIdx:   leafIdx,
-		Start:     p.Start + shift,
-		End:       p.End + shift,
+		Start:     start,
+		End:       end,
 		Root:      p.Root,
 		LeafHash:  p.LeafHash,
 		Proof:     p.Proof,
