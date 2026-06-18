@@ -341,6 +341,8 @@ func TestConsistency(t *testing.T) {
 		// Errors.
 		{size1: 5, size2: 0, wantErr: true},
 		{size1: 9, size2: 8, wantErr: true},
+		{size1: 0, size2: 5, wantErr: true},
+		{size1: 0, size2: 0, wantErr: true},
 
 		{size1: 1, size2: 2, want: nodes(id(0, 1))},                            // b
 		{size1: 1, size2: 4, want: nodes(id(0, 1), id(1, 1))},                  // b h

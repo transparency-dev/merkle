@@ -154,8 +154,11 @@ func TestTreeConsistencyProof(t *testing.T) {
 	if _, err := mt.ConsistencyProof(6, 3); err == nil {
 		t.Error("ConsistencyProof(6, 3) succeeded unexpectedly")
 	}
+	if _, err := mt.ConsistencyProof(0, 3); err == nil {
+		t.Error("ConsistencyProof(0, 3) succeeded unexpectedly")
+	}
 
-	for size1 := range uint64(8) + 1 {
+	for size1 := uint64(1); size1 <= 8; size1++ {
 		for size2 := size1; size2 <= 8; size2++ {
 			t.Run(fmt.Sprintf("%d:%d", size1, size2), func(t *testing.T) {
 				got, err := mt.ConsistencyProof(size1, size2)
@@ -178,8 +181,8 @@ func TestTreeConsistencyProofFuzz(t *testing.T) {
 	for treeSize := uint64(1); treeSize <= 256; treeSize++ {
 		mt := newTree(entries[:treeSize])
 		for range 8 {
-			size2 := rand.Uint64N(treeSize + 1)
-			size1 := rand.Uint64N(size2 + 1)
+			size2 := rand.Uint64N(treeSize) + 1
+			size1 := rand.Uint64N(size2) + 1
 
 			got, err := mt.ConsistencyProof(size1, size2)
 			if err != nil {

@@ -402,9 +402,9 @@ func staticConsistencyProbes(dir string) error {
 	tests := []consistencyProbe{
 		{0, 0, root1, root2, proof1, "sizes are equal (zero) but roots are not", true},
 		{1, 1, root1, root2, proof1, "sizes are equal (one) but roots are not", true},
-		// Sizes that are always consistent.
-		{0, 0, root1, root1, proof1, "sizes are equal (zero) and proof is empty", false},
+		{0, 0, root1, root1, proof1, "sizes are equal (zero) and proof is empty", true},
 		{0, 1, root1, root2, proof1, "size1 is zero and does not equal size2", true},
+		// Sizes that are always consistent.
 		{1, 1, root2, root2, proof1, "sizes are equal (one) and proof is empty", false},
 		// Time travel to the past.
 		{1, 0, root1, root2, proof1, "size1 is greater than size2", true},
@@ -418,6 +418,7 @@ func staticConsistencyProbes(dir string) error {
 		{0, 0, sha256EmptyTreeHash, sha256EmptyTreeHash, proof2, "sizes match but proof is not empty and sizes are zero", true},
 		{1, 1, sha256EmptyTreeHash, sha256EmptyTreeHash, proof2, "sizes match but proof is not empty and sizes are one", true},
 		// Fail to validate empty tree
+		{0, 1, sha256EmptyTreeHash, root2, proof1, "size1 is zero and size2 is not zero", true},
 		{0, 1, sha256EmptyTreeHash, sha256EmptyTreeHash, proof2, "consistency check on empty tree (size1 is zero) is useless", true},
 	}
 
