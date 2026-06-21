@@ -222,18 +222,15 @@ func rootFromSubtreeConsistencyProof(hasher merkle.LogHasher, start, end, size u
 	// belong to the subtree. We must verify that these nodes chain correctly to
 	// the argument subtree root.
 	if pStart == 1 {
-		// Helper to only chain nodes to the right of |start|, from level |shift|.
-		rightMask := (end - 1) >> uint(shift)
-		leftMask := start >> uint(shift)
-		// First, partially reconstruct the subtree root (hash1) by chaining left siblings
-		// from the inner part of the proof, skipping right siblings which lie outside the subtree.
-		hash1 := chainInnerRight(hasher, seed, proof[:inner], leftMask, rightMask)
-
-		// Then, hash the remaining border nodes that belong to the subtree.
-		if border > 0 {
-			// Only take border nodes that are to the right of |start| (inside the subtree).
-			k := border - bits.OnesCount64(start>>uint(forkLevel))
-			hash1 = chainBorderRight(hasher, hash1, proof[inner:inner+k])
+		h := bits.Len64((end - 1) ^ start)
+		hash1 := seed
+		for i, lvl := 0, shift; lvl < h; lvl++ {
+			if ((end-1)>>lvl)&1 == 1 {
+				hash1 = hasher.HashChildren(proof[i], hash1)
+				i++
+			} else if lvl < forkLevel {
+				i++
+			}
 		}
 		if err := verifyMatch(hash1, subRoot); err != nil {
 			return nil, err
@@ -275,23 +272,6 @@ func chainInner(hasher merkle.LogHasher, seed []byte, proof [][]byte, index uint
 		if (index>>uint(i))&1 == 0 {
 			seed = hasher.HashChildren(seed, h)
 		} else {
-			seed = hasher.HashChildren(h, seed)
-		}
-	}
-	return seed
-}
-
-// chainInnerRight computes a subtree hash like chainInner, but only takes
-// hashes within [leftMask, rightMask]. That effectively means taking only
-// hashes to the left of the path the proof follows, which results in hashing
-// the corresponding earlier version of this subtree.
-func chainInnerRight(hasher merkle.LogHasher, seed []byte, proof [][]byte, leftMask, rightMask uint64) []byte {
-	for i, h := range proof {
-		// Return as soon as we're outside of leftMask.
-		if rightMask>>uint(i) == leftMask>>uint(i) {
-			return seed
-		}
-		if (rightMask>>uint(i))&1 == 1 {
 			seed = hasher.HashChildren(h, seed)
 		}
 	}
