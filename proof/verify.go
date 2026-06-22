@@ -140,8 +140,8 @@ func RootFromConsistencyProof(hasher merkle.LogHasher, size1, size2 uint64, proo
 }
 
 // RootFromSubtreeConsistencyProof calculates the expected root hash for a
-// parent tree of the given size, from a subtree [start, end) with its root and
-// a consistency proof.
+// parent tree of the given size, from a subtree [start, end) root and a
+// consistency proof.
 //
 // It requires:
 //   - 0 <= start < end <= size.
@@ -198,7 +198,13 @@ func rootFromSubtreeConsistencyProof(hasher merkle.LogHasher, start, end, size u
 	// The proof starts at this level.
 	shift := bits.TrailingZeros64(end - start)
 
+	// The first node of the proof is the root of the rightmost subtree within
+	// the argument subtree.
 	seed, pStart := proof[0], 1
+	// Unless the argument subtree is full, in which case that rightmost subtree
+	// is the argument subtree itself. Its root is not included in the proof
+	// since a client verifying a subtree inclusion proof is expected to already
+	// know what the root of that subtree is.
 	if (end - start) == 1<<uint(shift) {
 		seed, pStart = subRoot, 0
 	}
@@ -208,15 +214,23 @@ func rootFromSubtreeConsistencyProof(hasher merkle.LogHasher, start, end, size u
 	}
 	proof = proof[pStart:]
 
+	// Compute the root of the [start, end) subtree for trees of sizes
+	// |end| and |size|.
 	subtreeRoot, grownSubtreeRoot, remainingProof := chainSubtree(hasher, seed, proof, start, end, size)
 	if err := verifyMatch(subtreeRoot, subRoot); err != nil {
 		return nil, err
 	}
 
-	h := bits.Len64((end - 1) ^ start)
-	macroIndex := start >> uint(h)
-	macroSize := ((size - 1) >> uint(h)) + 1
-	return RootFromInclusionProof(hasher, macroIndex, macroSize, grownSubtreeRoot, remainingProof)
+	// The remainder of the proof is an inclusion proof for grownSubtreeRoot
+	// into the parent tree of size |size|.
+	// Shift the tree down for that node to be a leaf.
+	// xor trims the common prefix between the first and last entry. The bit len
+	// of the result is the height of the subtree.
+	srHeight := bits.Len64((end - 1) ^ start)
+	// shifting indexes srHeight times gives the tree size at level srHeight.
+	sIndex := start >> uint(srHeight)
+	sSize := ((size - 1) >> uint(srHeight)) + 1
+	return RootFromInclusionProof(hasher, sIndex, sSize, grownSubtreeRoot, remainingProof)
 }
 
 // chainSubtree hashes nodes from proof up to subtree [start, end)'s root
