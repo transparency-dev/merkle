@@ -19,6 +19,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
+	"math/bits"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -109,6 +111,10 @@ var (
 	}
 )
 
+// =============================================================================
+// Inclusion Proofs
+// =============================================================================
+
 // inclusionProbe is a parameter set for inclusion proof verification.
 type inclusionProbe struct {
 	LeafIdx  uint64   `json:"leafIdx"`
@@ -121,7 +127,10 @@ type inclusionProbe struct {
 	WantError bool   `json:"wantErr"`
 }
 
-func inclusionProbes(rootDir string) error {
+// incProbeWriter writes an inclusionProbe to disk.
+type incProbeWriter func(dir string, probe inclusionProbe) error
+
+func generateInclusionProbes(rootDir string, write incProbeWriter) error {
 	for i, p := range inclusionProofs {
 		dir := filepath.Join(rootDir, strconv.Itoa(i))
 		if err := os.MkdirAll(dir, 0755); err != nil {
@@ -129,7 +138,7 @@ func inclusionProbes(rootDir string) error {
 		}
 
 		leafHash := rfc6962.DefaultHasher.HashLeaf(leaves[p.leafIdx-1])
-		if err := corruptedInclusionProbes(dir, p.leafIdx-1, p.size, p.proof, roots[p.size-1], leafHash); err != nil {
+		if err := corruptedInclusionProbes(dir, p.leafIdx-1, p.size, p.proof, roots[p.size-1], leafHash, write); err != nil {
 			return err
 		}
 	}
@@ -139,7 +148,7 @@ func inclusionProbes(rootDir string) error {
 		return err
 	}
 
-	if err := staticInclusionProbes(staticDir); err != nil {
+	if err := staticInclusionProbes(staticDir, write); err != nil {
 		return err
 	}
 
@@ -148,7 +157,7 @@ func inclusionProbes(rootDir string) error {
 		return err
 	}
 
-	if err := singleEntryInclusionProbes(singleEntryDir); err != nil {
+	if err := singleEntryInclusionProbes(singleEntryDir, write); err != nil {
 		return err
 	}
 
@@ -197,15 +206,15 @@ func invalidInclusionProof(leafIdx, treeSize uint64, proof [][]byte, root, leafH
 	return ret
 }
 
-func corruptedInclusionProbes(dir string, leafIdx, treeSize uint64, proof [][]byte, root, leafHash []byte) error {
+func corruptedInclusionProbes(dir string, leafIdx, treeSize uint64, proof [][]byte, root, leafHash []byte, write incProbeWriter) error {
 	happyPath := inclusionProbe{leafIdx, treeSize, root, leafHash, proof, "happy path", false}
-	if err := writeInclusionProbe(dir, happyPath); err != nil {
-		return nil
+	if err := write(dir, happyPath); err != nil {
+		return err
 	}
 
 	probes := invalidInclusionProof(leafIdx, treeSize, proof, root, leafHash)
 	for _, p := range probes {
-		if err := writeInclusionProbe(dir, p); err != nil {
+		if err := write(dir, p); err != nil {
 			return err
 		}
 	}
@@ -213,7 +222,7 @@ func corruptedInclusionProbes(dir string, leafIdx, treeSize uint64, proof [][]by
 	return nil
 }
 
-func singleEntryInclusionProbes(dir string) error {
+func singleEntryInclusionProbes(dir string, write incProbeWriter) error {
 	data := []byte("data")
 	// Root and leaf hash for 1-entry tree are the same.
 	hash := rfc6962.DefaultHasher.HashLeaf(data)
@@ -234,7 +243,7 @@ func singleEntryInclusionProbes(dir string) error {
 	} {
 		probe := inclusionProbe{0, 1, p.root, p.leaf, proof, p.desc, p.wantErr}
 
-		if err := writeInclusionProbe(dir, probe); err != nil {
+		if err := write(dir, probe); err != nil {
 			return err
 		}
 	}
@@ -242,7 +251,7 @@ func singleEntryInclusionProbes(dir string) error {
 	return nil
 }
 
-func staticInclusionProbes(rootDir string) error {
+func staticInclusionProbes(rootDir string, write incProbeWriter) error {
 	proof := [][]byte{}
 
 	probes := []struct {
@@ -256,17 +265,17 @@ func staticInclusionProbes(rootDir string) error {
 		}
 
 		randomLeaf := inclusionProbe{p.index, p.size, []byte{}, sha256SomeHash, proof, "random leaf", true}
-		if err := writeInclusionProbe(dir, randomLeaf); err != nil {
+		if err := write(dir, randomLeaf); err != nil {
 			return err
 		}
 
 		emptyRoot := inclusionProbe{p.index, p.size, sha256EmptyTreeHash, []byte{}, proof, "empty root", true}
-		if err := writeInclusionProbe(dir, emptyRoot); err != nil {
+		if err := write(dir, emptyRoot); err != nil {
 			return err
 		}
 
 		emptyRootRandomLeaf := inclusionProbe{p.index, p.size, sha256EmptyTreeHash, sha256SomeHash, proof, "empty root and random leaf", true}
-		if err := writeInclusionProbe(dir, emptyRootRandomLeaf); err != nil {
+		if err := write(dir, emptyRootRandomLeaf); err != nil {
 			return err
 		}
 	}
@@ -289,6 +298,208 @@ func writeInclusionProbe(dir string, probe inclusionProbe) error {
 
 	return nil
 }
+
+// =============================================================================
+// Subtree Inclusion Proofs
+// =============================================================================
+
+// subtreeInclusionProbe is a parameter set for subtree inclusion proof verification.
+type subtreeInclusionProbe struct {
+	LeafIdx  uint64   `json:"leafIdx"`
+	Start    uint64   `json:"start"`
+	End      uint64   `json:"end"`
+	Root     []byte   `json:"root"`
+	LeafHash []byte   `json:"leafHash"`
+	Proof    [][]byte `json:"proof"`
+
+	Desc      string `json:"desc"`
+	WantError bool   `json:"wantErr"`
+}
+
+// bitCeil returns the smallest power of 2 larger than or equal to n.
+// MUST NOT be used with n larger than uint64(1)<<63.
+func bitCeil(n uint64) uint64 {
+	if n <= 1 {
+		return 1
+	}
+	return uint64(1) << bits.Len64(n-1)
+}
+
+func toSubtreeInclusionProbe(p inclusionProbe) subtreeInclusionProbe {
+	return subtreeInclusionProbe{
+		LeafIdx:   p.LeafIdx,
+		Start:     0,
+		End:       p.TreeSize,
+		Root:      p.Root,
+		LeafHash:  p.LeafHash,
+		Proof:     p.Proof,
+		Desc:      p.Desc,
+		WantError: p.WantError,
+	}
+}
+
+func shiftSubtreeInclusionProbe(p subtreeInclusionProbe) subtreeInclusionProbe {
+	shift := bitCeil(p.End - p.Start)
+	desc := p.Desc + " - subtree"
+	leafIdx, start, end := p.LeafIdx, p.Start, p.End
+	// Shift indices independently to allow for pathological cases.
+	if p.Start <= math.MaxUint64-shift {
+		start += shift
+	}
+	if p.LeafIdx <= math.MaxUint64-shift {
+		leafIdx += shift
+	}
+	if p.End <= math.MaxUint64-shift {
+		end += shift
+	}
+	return subtreeInclusionProbe{
+		LeafIdx:   leafIdx,
+		Start:     start,
+		End:       end,
+		Root:      p.Root,
+		LeafHash:  p.LeafHash,
+		Proof:     p.Proof,
+		Desc:      desc,
+		WantError: p.WantError,
+	}
+}
+
+func errorSubtreeInclusionProbes(rootDir string) error {
+	dir := filepath.Join(rootDir, "errors")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+
+	leafHash := rfc6962.DefaultHasher.HashLeaf(leaves[0])
+
+	tests := []subtreeInclusionProbe{
+		{
+			LeafIdx:   0,
+			Start:     0,
+			End:       0,
+			Root:      sha256EmptyTreeHash,
+			LeafHash:  leafHash,
+			Proof:     nil,
+			Desc:      "everything zero",
+			WantError: true,
+		},
+		{
+			LeafIdx:   0,
+			Start:     1,
+			End:       1,
+			Root:      sha256EmptyTreeHash,
+			LeafHash:  leafHash,
+			Proof:     nil,
+			Desc:      "start equals end",
+			WantError: true,
+		},
+		{
+			LeafIdx:   3,
+			Start:     3,
+			End:       5,
+			Root:      sha256EmptyTreeHash,
+			LeafHash:  leafHash,
+			Proof:     nil,
+			Desc:      "invalid subtree",
+			WantError: true,
+		},
+		{
+			LeafIdx:   1,
+			Start:     1,
+			End:       (1 << 63) + 2,
+			Root:      sha256EmptyTreeHash,
+			LeafHash:  leafHash,
+			Proof:     nil,
+			Desc:      "invalid large subtree",
+			WantError: true,
+		},
+		{
+			LeafIdx:   0,
+			Start:     1,
+			End:       2,
+			Root:      sha256EmptyTreeHash,
+			LeafHash:  leafHash,
+			Proof:     nil,
+			Desc:      "oob left",
+			WantError: true,
+		},
+		{
+			LeafIdx:   3,
+			Start:     0,
+			End:       2,
+			Root:      sha256EmptyTreeHash,
+			LeafHash:  leafHash,
+			Proof:     nil,
+			Desc:      "oob right",
+			WantError: true,
+		},
+		{
+			LeafIdx:   3,
+			Start:     0,
+			End:       3,
+			Root:      sha256EmptyTreeHash,
+			LeafHash:  leafHash,
+			Proof:     nil,
+			Desc:      "oob right 2",
+			WantError: true,
+		},
+		{
+			LeafIdx:   0,
+			Start:     2,
+			End:       1,
+			Root:      sha256EmptyTreeHash,
+			LeafHash:  leafHash,
+			Proof:     nil,
+			Desc:      "start larger than end",
+			WantError: true,
+		},
+	}
+
+	for _, tc := range tests {
+		if err := writeSubtreeInclusionProbe(dir, tc); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func writeSubtreeInclusionProbe(dir string, probe subtreeInclusionProbe) error {
+	fn := fileName(probe.Desc)
+
+	probeJson, err := json.MarshalIndent(probe, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshaling probe: %s", err)
+	}
+
+	fileLocation := filepath.Join(dir, fn)
+	if err := os.WriteFile(fileLocation, probeJson, 0644); err != nil {
+		return fmt.Errorf("writing probe: %s: %s", fn, err)
+	}
+
+	return nil
+}
+
+// convertToSubtreeInclusionProbesAndWrite generates subtree inclusion proofs
+// from inclusion proofs and writes them.
+//
+// An inclusion proof for an entry at index in a tree of a given size leads to
+// two subtree inclusion proofs:
+//   - one for for an entry at index in a subtree of the same given size.
+//   - a second one for an entry shifted by bitCeil(size) for the subtree
+//     [bitCeil(size), size+bitCeil(size)).
+func convertToSubtreeInclusionProbesAndWrite(dir string, p inclusionProbe) error {
+	sp1 := toSubtreeInclusionProbe(p)
+	if err := writeSubtreeInclusionProbe(dir, sp1); err != nil {
+		return err
+	}
+	sp2 := shiftSubtreeInclusionProbe(sp1)
+	return writeSubtreeInclusionProbe(dir, sp2)
+}
+
+// =============================================================================
+// Consistency Proofs
+// =============================================================================
 
 // consistencyProbe is a parameter set for consistency proof verification.
 type consistencyProbe struct {
@@ -447,6 +658,10 @@ func writeConsistencyProbe(dir string, probe consistencyProbe) error {
 	return nil
 }
 
+// =============================================================================
+// General Helpers
+// =============================================================================
+
 // extend explicitly copies |proof| slice and appends |hashes| to it.
 func extend(proof [][]byte, hashes ...[]byte) [][]byte {
 	return append(append([][]byte{}, proof...), hashes...)
@@ -470,6 +685,7 @@ func dh(h string, expLen int) []byte {
 
 func fileName(n string) string {
 	r := strings.NewReplacer(
+		" - ", "-",
 		"(", "",
 		")", "",
 		" ", "-")
@@ -478,8 +694,16 @@ func fileName(n string) string {
 
 func main() {
 	inclusionDir := "testdata/inclusion"
-	if err := inclusionProbes(inclusionDir); err != nil {
+	if err := generateInclusionProbes(inclusionDir, writeInclusionProbe); err != nil {
 		log.Fatalf("writing inclusion test data: %s", err)
+	}
+
+	subtreeInclusionDir := "testdata/subtreeinclusion"
+	if err := generateInclusionProbes(subtreeInclusionDir, convertToSubtreeInclusionProbesAndWrite); err != nil {
+		log.Fatalf("writing subtree inclusion test data: %s", err)
+	}
+	if err := errorSubtreeInclusionProbes(subtreeInclusionDir); err != nil {
+		log.Fatalf("writing subtree inclusion error test data: %s", err)
 	}
 
 	consistencyDir := "testdata/consistency"
