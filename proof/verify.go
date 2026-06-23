@@ -218,13 +218,14 @@ func rootFromSubtreeConsistencyProof(hasher merkle.LogHasher, start, end, size u
 	// Now len(proof) == inner+border, and proof is effectively a suffix of
 	// the inclusion proof for entry |end-1| in a tree of size |size|.
 
+	mask := (end - 1) >> uint(shift) // Start chaining from level |shift|.
+
 	// If the argument subtree is not full, the proof includes somes nodes that
 	// belong to the subtree. We must verify that these nodes chain correctly to
 	// the argument subtree root.
 	if pStart == 1 {
 		subInner, innerIdx, borderEnd := decompSubtreeProof(start, end, size, border)
-		rightMask := (end - 1) >> uint(shift)
-		hash1 := chainInnerRight(hasher, seed, proof[:subInner], rightMask)
+		hash1 := chainInnerRight(hasher, seed, proof[:subInner], mask)
 		hash1 = chainBorderRight(hasher, hash1, proof[innerIdx:borderEnd])
 		if err := verifyMatch(hash1, subRoot); err != nil {
 			return nil, err
@@ -232,8 +233,7 @@ func rootFromSubtreeConsistencyProof(hasher merkle.LogHasher, start, end, size u
 	}
 
 	// Verify the second root.
-	rightMask := (end - 1) >> uint(shift) // Start chaining from level |shift|
-	hash2 := chainInner(hasher, seed, proof[:inner], rightMask)
+	hash2 := chainInner(hasher, seed, proof[:inner], mask)
 	// Then, chain the upper part of the proof.
 	hash2 = chainBorderRight(hasher, hash2, proof[inner:])
 	return hash2, nil
