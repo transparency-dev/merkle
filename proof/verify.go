@@ -222,20 +222,10 @@ func rootFromSubtreeConsistencyProof(hasher merkle.LogHasher, start, end, size u
 	// belong to the subtree. We must verify that these nodes chain correctly to
 	// the argument subtree root.
 	if pStart == 1 {
+		subInner, innerIdx, borderEnd := decompSubtreeProof(start, end, size, border)
 		rightMask := (end - 1) >> uint(shift)
-		leftMask := start >> uint(shift)
-		// Clamp the proof such that it only includes nodes inside the subtree.
-		clampedLen := min(bits.Len64(rightMask^leftMask), inner)
-		// First, partially reconstruct the subtree root (hash1) by chaining left siblings
-		// from the inner part of the proof, and inside the subtree.
-		hash1 := chainInnerRight(hasher, seed, proof[:clampedLen], rightMask)
-
-		// Then, hash the remaining border nodes that belong to the subtree.
-		if border > 0 {
-			// Only take border nodes that are to the right of |start| (inside the subtree).
-			k := border - bits.OnesCount64(start>>uint(forkLevel))
-			hash1 = chainBorderRight(hasher, hash1, proof[inner:inner+k])
-		}
+		hash1 := chainInnerRight(hasher, seed, proof[:subInner], rightMask)
+		hash1 = chainBorderRight(hasher, hash1, proof[innerIdx:borderEnd])
 		if err := verifyMatch(hash1, subRoot); err != nil {
 			return nil, err
 		}
@@ -258,6 +248,19 @@ func decompInclProof(index, size uint64) (int, int) {
 	inner := innerProofSize(index, size)
 	border := bits.OnesCount64(index >> uint(inner))
 	return inner, border
+}
+
+// decompSubtreeProof returns the exact proof slice indices (subInner, inner,
+// and inner+subBorder) needed to reconstruct hash1.
+func decompSubtreeProof(start, end, size uint64, border int) (int, int, int) {
+	h := bits.Len64((end - 1) ^ start)
+	forkLevel := bits.Len64((end - 1) ^ (size - 1))
+	shift := bits.TrailingZeros64(end - start)
+
+	subInner := min(h, forkLevel) - shift
+	inner := forkLevel - shift
+	subBorder := max(0, border-bits.OnesCount64((end-1)>>uint(h)))
+	return subInner, inner, inner + subBorder
 }
 
 func innerProofSize(index, size uint64) int {
