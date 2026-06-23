@@ -102,6 +102,69 @@ func refConsistencyProof(entries [][]byte, size2, size1 uint64, hasher merkle.Lo
 		refRootHash(entries[:split], hasher))
 }
 
+// refSubtreeConsistencyProof returns the subtree consistency proof for the
+// subtree [start, end) in a Merkle tree with the given entries and size.
+// This is a reference implementation based on the recursive algorithm from
+// the RFC to be used for cross-checking only.
+func refSubtreeConsistencyProof(start, end uint64, entries [][]byte, known bool, hasher merkle.LogHasher) [][]byte {
+	size := uint64(len(entries))
+	if start >= end {
+		return nil
+	}
+	if end == 0 || end > size {
+		return nil
+	}
+	// Consistency proof between a tree and itself is empty.
+	if start == 0 && end == size {
+		// Record the hash of this subtree if it's not the root for which the proof
+		// was originally requested (which happens when [start, end) is a full subtree).
+		if !known {
+			return [][]byte{refRootHash(entries[:size], hasher)}
+		}
+		return nil
+	}
+
+	// At this point: end < size.
+	split := downToPowerOfTwo(size)
+	switch {
+	// The subtree is on the left of split. Prove that the subtree is consistent
+	// with the subtree on the left of split, and record the root of the right
+	// subtree.
+	case end <= split:
+		return append(
+			refSubtreeConsistencyProof(start, end, entries[:split], known, hasher),
+			refRootHash(entries[split:], hasher))
+	// The subtree is on the right of split. Prove that the subtree is consistent
+	// with the subtree on the right of split, and record the root of the left
+	// subtree.
+	case split <= start:
+		return append(
+			refSubtreeConsistencyProof(start-split, end-split, entries[split:], known, hasher),
+			refRootHash(entries[:split], hasher))
+	// Otherwise, split is between start and end.
+	// This means that start is 0.
+	// Prove that the subtree is consistent with the subtree on right of split,
+	// and record the root of the left subtree.
+	//
+	// Proof that start is 0:
+	//   With C = bitCeil(len([start, end))):
+	//     - By definition, end - start <= C.
+	//     - Since the subtree is valid, start is a multiple of C (start = k * C).
+	//     - In this case, start < split < end <= start + C and
+	//       so k * C < split < (k+1) * C
+	//     - Since split and C are both powers of 2:
+	//       - If split < C, then if k >= 1, split < C <= start, contradicting
+	//         start < split.
+	//       - If split >= C, split must be a multiple of C, but no multiple of
+	//         C lies strictly between k * C and (k + 1) * C.
+	//     - Thus, k must be 0, meaning start is 0.
+	default:
+		return append(
+			refSubtreeConsistencyProof(0, end-split, entries[split:], false, hasher),
+			refRootHash(entries[:split], hasher))
+	}
+}
+
 // downToPowerOfTwo returns the largest power of two smaller than x.
 func downToPowerOfTwo(x uint64) uint64 {
 	if x < 2 {

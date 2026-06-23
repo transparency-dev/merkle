@@ -196,6 +196,43 @@ func TestTreeConsistencyProofFuzz(t *testing.T) {
 	}
 }
 
+func TestSubtreeTreeConsistencyProof(t *testing.T) {
+	entries := LeafInputs()
+	mt := newTree(entries)
+	validateTree(t, mt, 8)
+
+	if _, err := mt.SubtreeConsistencyProof(0, 6, 3); err == nil {
+		t.Error("SubtreeConsistencyProof(0, 6, 3) succeeded unexpectedly (size < end)")
+	}
+	if _, err := mt.SubtreeConsistencyProof(3, 3, 8); err == nil {
+		t.Error("SubtreeConsistencyProof(3, 3, 8) succeeded unexpectedly (start >= end)")
+	}
+	if _, err := mt.SubtreeConsistencyProof(1, 3, 8); err == nil {
+		t.Error("SubtreeConsistencyProof(1, 3, 8) succeeded unexpectedly (invalid subtree)")
+	}
+
+	maxSize := uint64(len(entries))
+	for end := uint64(1); end <= maxSize; end++ {
+		for size := end; size <= maxSize; size++ {
+			for start := range end {
+				if err := isSubtreeValid(start, end); err != nil {
+					continue
+				}
+				t.Run(fmt.Sprintf("%d:%d:%d", start, end, size), func(t *testing.T) {
+					got, err := mt.SubtreeConsistencyProof(start, end, size)
+					if err != nil {
+						t.Fatalf("SubtreeConsistencyProof: %v", err)
+					}
+					want := refSubtreeConsistencyProof(start, end, entries[:size], true, mt.hasher)
+					if diff := cmp.Diff(got, want, cmpopts.EquateEmpty()); diff != "" {
+						t.Errorf("SubtreeConsistencyProof: diff (-got +want)\n%s", diff)
+					}
+				})
+			}
+		}
+	}
+}
+
 func TestTreeAppend(t *testing.T) {
 	entries := genEntries(256)
 	mt1 := newTree(entries)
