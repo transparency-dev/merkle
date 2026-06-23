@@ -94,8 +94,8 @@ func Consistency(size1, size2 uint64) (Nodes, error) {
 }
 
 // SubtreeConsistency returns the information on how to fetch and construct a
-// consistency proof between a Merkle subtree covering [start, end) and log
-// Merkle tree of a given size. It requires:
+// consistency proof between a Merkle subtree covering [start, end) and the
+// larger parent Merkle tree of a given size. It requires:
 //   - 0 <= start < end <= size
 //   - start to be a multiple of the smallest power of two greater than or equal to
 //     (end - start)
@@ -118,13 +118,15 @@ func subtreeConsistency(start, end, size uint64) (Nodes, error) {
 	if end == size {
 		// Find the subtree's root, the lowest common ancestor of entries |start| and
 		// |end-1|.
+		// xor trims the common prefix between the first and last entry. The bit len
+		// of the result is the height of the subtree.
 		level := uint(bits.Len64((end - 1) ^ start))
+		// Then, shift the tree down by |level| to make this node a leaf.
 		index := (end - 1) >> level
 
-		// Shift the tree down by |level|.
 		p := nodes(index, 0, index+1)
 		// The first node of the proof is the subtree's root. It is already known
-		// by the client and can be skipped.
+		// by the client and should be skipped.
 		p = p.skipFirst()
 
 		// Shift the nodes back up.
