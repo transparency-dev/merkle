@@ -412,6 +412,191 @@ func TestConsistency(t *testing.T) {
 	}
 }
 
+// TestSubtreeConsistency contains consistency proof tests. For reference, consider
+// the following example:
+//
+//	                        aaaaa                                   <== Level 4
+//	                         / \
+//	               ...                   ...
+//	               /                       \
+//	              /                         \
+//	             /                           \
+//	           aaaa                         bbbb                    <== Level 3
+//	          /    \                       /    \
+//	         /      \                     /      \
+//	        /        \                   /        \
+//	       /          \                 /          \
+//	      /            \               /            \
+//	    aaa            bbb           ccc            ddd             <== Level 2
+//	    / \            / \           / \            / \
+//	   /   \          /   \         /   \          /   \
+//	  /     \        /     \       /     \        /     \
+//	 aa      bb     cc     dd     ee      ff     gg    hh      ii   <== Level 1
+//	/ \     / \    / \    / \    / \     / \    / \    / \    / \
+//	a b     c d    e f    g h    i j     k l    m n    o p    q r   <== Level 0
+//	| |     | |    | |    | |    | |     | |    | |    | |    | |
+//	d0 d1   d2 d3  d4 d5  d6 d7  d8 d9   d10    d12    d14    d16
+//	                                       |      |      |      |
+//	                                       d11    d13    d15    d17
+//
+// The consistency proof between tree size 5 and 7 consists of nodes e, f, g,
+// and aaa. The node g is taken instead of its missing parent.
+func TestSubtreeConsistency(t *testing.T) {
+	id := compact.NewNodeID
+	nodes := func(ids ...compact.NodeID) Nodes {
+		return Nodes{IDs: ids}
+	}
+	rehash := func(begin, end int, ids ...compact.NodeID) Nodes {
+		return Nodes{IDs: ids, begin: begin, end: end}
+	}
+	for _, tc := range []struct {
+		start   uint64
+		end     uint64
+		size    uint64
+		want    Nodes
+		wantErr bool
+	}{
+		// Errors.
+		{start: 0, end: 0, size: 0, wantErr: true},                 // start = end = 0
+		{start: 1, end: 1, size: 1, wantErr: true},                 // start = end
+		{start: 2, end: 1, size: 0, wantErr: true},                 // start > end
+		{start: 0, end: 5, size: 0, wantErr: true},                 // end > size
+		{start: 0, end: 9, size: 8, wantErr: true},                 // end > size
+		{start: 3, end: 5, size: 3, wantErr: true},                 // start not multiple of bit_ceil(end-start)
+		{start: 1, end: 1<<63 + 2, size: 1<<63 + 2, wantErr: true}, // start not multiple of bit_ceil(len) with big tree
+
+		// Small trees.
+		// start = 0
+		{start: 0, end: 1, size: 2, want: nodes(id(0, 1))},                            // b
+		{start: 0, end: 1, size: 4, want: nodes(id(0, 1), id(1, 1))},                  // b bb
+		{start: 0, end: 1, size: 6, want: rehash(2, 3, id(0, 1), id(1, 1), id(1, 2))}, // b bb cc
+		{start: 0, end: 2, size: 3, want: rehash(0, 1, id(0, 2))},                     // c
+		{start: 0, end: 2, size: 8, want: nodes(id(1, 1), id(2, 1))},                  // bb bbb
+		{start: 0, end: 3, size: 7, want: rehash(3, 5, // bbb=hash(cc,g)
+			id(0, 2), id(0, 3), id(1, 0), id(0, 6), id(1, 2))}, // c d aa g cc
+		{start: 0, end: 4, size: 7, want: rehash(0, 2, // bbb=hash(cc,g)
+			id(0, 6), id(1, 2))}, // g cc
+		{start: 0, end: 5, size: 7, want: rehash(2, 3,
+			id(0, 4), id(0, 5), id(0, 6), id(2, 0))}, // e f g aaa
+		{start: 0, end: 6, size: 7, want: rehash(1, 2,
+			id(1, 2), id(0, 6), id(2, 0))}, // cc g aaa
+		{start: 0, end: 6, size: 8, want: nodes(
+			id(1, 2), id(1, 3), id(2, 0))}, // cc h aaa
+		{start: 0, end: 7, size: 8, want: nodes(
+			id(0, 6), id(0, 7), id(1, 2), id(2, 0))}, // g h cc aaa
+		// start > 0
+		{start: 1, end: 2, size: 3, want: rehash(1, 2, id(0, 0), id(0, 2))},                     // a c
+		{start: 1, end: 2, size: 5, want: rehash(2, 3, id(0, 0), id(1, 1), id(0, 4))},           // a bb e
+		{start: 2, end: 4, size: 5, want: rehash(1, 2, id(1, 0), id(0, 4))},                     // aa e
+		{start: 1, end: 2, size: 7, want: rehash(2, 4, id(0, 0), id(1, 1), id(0, 6), id(1, 2))}, // a bb g cc
+		{start: 2, end: 4, size: 10, want: rehash(2, 3, id(1, 0), id(2, 1), id(1, 4))},          // aa bbb ee
+		{start: 4, end: 6, size: 10, want: rehash(2, 3, id(1, 3), id(2, 0), id(1, 4))},          // dd aaa ee
+		{start: 4, end: 7, size: 11, want: rehash(4, 6, // ccc=hash(ee,k)
+			id(0, 6), id(0, 7), id(1, 2), id(2, 0), id(0, 10), id(1, 4))}, // g h cc aaa k ee
+		{start: 4, end: 8, size: 11, want: rehash(1, 3, // ccc=hash(ee,k)
+			id(2, 0), id(0, 10), id(1, 4))}, // aaa k ee
+		{start: 8, end: 13, size: 15, want: rehash(2, 3,
+			id(0, 12), id(0, 13), id(0, 14), id(2, 2), id(3, 0))}, // m n  o ccc aaaa
+		{start: 8, end: 14, size: 15, want: rehash(1, 2, // hh=hash(o)
+			id(1, 6), id(0, 14), id(2, 2), id(3, 0))}, // gg, o, ccc, aaaa
+		{start: 8, end: 14, size: 16, want: nodes(
+			id(1, 6), id(1, 7), id(2, 2), id(3, 0))}, // gg hh ccc aaaa
+		{start: 8, end: 15, size: 16, want: nodes(
+			id(0, 14), id(0, 15), id(1, 6), id(2, 2), id(3, 0))}, // o p gg ccc aaaa
+		// end = size
+		{start: 1, end: 2, size: 2, want: nodes(id(0, 0))},                     // a
+		{start: 3, end: 4, size: 4, want: nodes(id(0, 2), id(1, 0))},           // c aa
+		{start: 5, end: 6, size: 6, want: nodes(id(0, 4), id(2, 0))},           // e aaa
+		{start: 2, end: 3, size: 3, want: nodes(id(1, 0))},                     // aa
+		{start: 6, end: 8, size: 8, want: nodes(id(1, 2), id(2, 0))},           // cc aaa
+		{start: 4, end: 7, size: 7, want: nodes(id(2, 0))},                     // aaa
+		{start: 6, end: 7, size: 7, want: nodes(id(1, 2), id(2, 0))},           // cc aaa
+		{start: 4, end: 8, size: 8, want: nodes(id(2, 0))},                     // aaa
+		{start: 7, end: 8, size: 8, want: nodes(id(0, 6), id(1, 2), id(2, 0))}, // g h cc aaa
+
+		// Same tree size.
+		{start: 0, end: 1, size: 1, want: Nodes{IDs: []compact.NodeID{}}},
+		{start: 0, end: 2, size: 2, want: Nodes{IDs: []compact.NodeID{}}},
+		{start: 0, end: 3, size: 3, want: Nodes{IDs: []compact.NodeID{}}},
+		{start: 0, end: 4, size: 4, want: Nodes{IDs: []compact.NodeID{}}},
+		{start: 0, end: 5, size: 5, want: Nodes{IDs: []compact.NodeID{}}},
+		{start: 0, end: 7, size: 7, want: Nodes{IDs: []compact.NodeID{}}},
+		{start: 0, end: 8, size: 8, want: Nodes{IDs: []compact.NodeID{}}},
+
+		// Smaller trees within a bigger stored tree.
+		// start = 0
+		{start: 0, end: 2, size: 4, want: nodes(id(1, 1))}, // bb
+		{start: 0, end: 3, size: 5, want: rehash(3, 4,
+			id(0, 2), id(0, 3), id(1, 0), id(0, 4))}, // c d aa e
+		{start: 0, end: 3, size: 6, want: rehash(3, 4,
+			id(0, 2), id(0, 3), id(1, 0), id(1, 2))}, // c d aa cc
+		{start: 0, end: 4, size: 6, want: rehash(0, 1, id(1, 2))}, // cc
+		{start: 0, end: 1, size: 7, want: rehash(2, 4, // bbb=hash(cc,g)
+			id(0, 1), id(1, 1), id(0, 6), id(1, 2))}, // b bb g cc
+		// start > 0
+		{start: 2, end: 4, size: 6, want: rehash(1, 2, // bbb=hash(cc)
+			id(1, 0), id(1, 2))}, // aa, cc
+		{start: 4, end: 7, size: 9, want: rehash(4, 5, // bbbb=hash(i)
+			id(0, 6), id(0, 7), id(1, 2), id(2, 0), id(0, 8))}, // g h cc aaa i
+		{start: 4, end: 7, size: 10, want: rehash(4, 5, // bbbb=hash(ee)
+			id(0, 6), id(0, 7), id(1, 2), id(2, 0), id(1, 4))}, // g h cc aaa ee
+		{start: 4, end: 8, size: 10, want: rehash(1, 2, //ccc=hash(ee)
+			id(2, 0), id(1, 4))}, // aa ee
+		{start: 2, end: 3, size: 9, want: rehash(3, 4, // bbbb=hash(i)
+			id(0, 3), id(1, 0), id(2, 1), id(0, 8))}, // d aa bbb i
+		// end = size
+		{start: 4, end: 6, size: 6, want: nodes(id(2, 0))},   // aaa
+		{start: 8, end: 9, size: 9, want: nodes(id(3, 0))},   // aaaa
+		{start: 8, end: 10, size: 10, want: nodes(id(3, 0))}, // aaaa
+		{start: 8, end: 12, size: 12, want: nodes(id(3, 0))}, // aaaa
+
+		// Some rehashes in the middle of the returned list.
+		{start: 0, end: 10, size: 15, want: rehash(2, 4,
+			id(1, 4), id(1, 5), id(0, 14), id(1, 6), id(3, 0))},
+		{start: 16, end: 26, size: 31, want: rehash(2, 4,
+			id(1, 12), id(1, 13), id(0, 30), id(1, 14), id(3, 2), id(4, 0))},
+		{start: 0, end: 24, size: 31, want: rehash(1, 4,
+			id(3, 2),
+			id(0, 30), id(1, 14), id(2, 6),
+			id(4, 0),
+		)},
+		{start: 32, end: 56, size: 63, want: rehash(1, 4,
+			id(3, 6),
+			id(0, 62), id(1, 30), id(2, 14),
+			id(4, 2),
+			id(5, 0),
+		)},
+		{start: 0, end: 81, size: 95, want: rehash(4, 7,
+			id(0, 80), id(0, 81), id(1, 41), id(2, 21),
+			id(0, 94), id(1, 46), id(2, 22),
+			id(4, 4), id(6, 0),
+		)},
+		{start: 128, end: 209, size: 223, want: rehash(4, 7,
+			id(0, 208), id(0, 209), id(1, 105), id(2, 53),
+			id(0, 222), id(1, 110), id(2, 54),
+			id(4, 12), id(6, 2),
+			id(7, 0),
+		)},
+	} {
+		t.Run(fmt.Sprintf("%d:%d:%d", tc.start, tc.end, tc.size), func(t *testing.T) {
+			proof, err := SubtreeConsistency(tc.start, tc.end, tc.size)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatal("accepted bad params")
+				}
+				return
+			} else if err != nil {
+				t.Fatalf("Consistency: %v", err)
+			}
+			// Ignore the ephemeral node, it is tested separately.
+			proof.ephem = compact.NodeID{}
+			if diff := cmp.Diff(tc.want, proof, cmp.AllowUnexported(Nodes{})); diff != "" {
+				t.Errorf("paths mismatch:\n%v", diff)
+			}
+		})
+	}
+}
+
 func TestInclusionSucceedsUpToTreeSize(t *testing.T) {
 	const maxSize = uint64(555)
 	for ts := uint64(1); ts <= maxSize; ts++ {
@@ -445,6 +630,22 @@ func TestConsistencySucceedsUpToTreeSize(t *testing.T) {
 		for s2 := s1 + 1; s2 <= maxSize; s2++ {
 			if _, err := Consistency(s1, s2); err != nil {
 				t.Errorf("Consistency(%d, %d) = %v", s1, s2, err)
+			}
+		}
+	}
+}
+
+func TestSubtreeConsistencySucceedsUpToTreeSize(t *testing.T) {
+	const maxSize = uint64(100)
+	for s := uint64(1); s <= maxSize; s++ {
+		for sbe := uint64(1); sbe <= s; sbe++ {
+			for sbs := range sbe {
+				if err := isSubtreeValid(sbs, sbe); err != nil {
+					continue
+				}
+				if _, err := SubtreeConsistency(sbs, sbe, s); err != nil {
+					t.Errorf("SubtreeConsistency(sbs:%d, sbe:%d, s:%d) = %v", sbs, sbe, s, err)
+				}
 			}
 		}
 	}
