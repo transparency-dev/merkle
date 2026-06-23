@@ -18,7 +18,6 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io"
-	"math/bits"
 	"testing"
 )
 
@@ -28,7 +27,7 @@ import (
 // input into a single rolling SHA-256, which is compared against the value
 // published in the draft.
 
-const subtreeVectorMax = 130
+const subtreeVectorMax = uint64(130)
 
 // subtreeVectorTree builds the tree D used by the test vectors, with leaf values
 // d[0] = 0x00, d[1] = 0x01, and so on.
@@ -40,35 +39,36 @@ func subtreeVectorTree() *Tree {
 	return newTree(entries)
 }
 
-func isValidSubtree(start, end int) bool {
-	if 0 > start || start >= end {
-		return false
-	}
-	ceil := uint(1) << (bits.UintSize - bits.LeadingZeros(uint(end-start-1)))
-	return uint(start)&(ceil-1) == 0
-}
-
 // writeProofLine writes prefix followed by, for each hash in the concatenated
 // proof, a space and the hash's hexadecimal encoding, then a newline. An empty
 // proof contributes no hashes and so leaves no trailing space.
-func writeProofLine(w io.Writer, prefix string, proof [][]byte) {
-	io.WriteString(w, prefix)
-	for _, h := range proof {
-		fmt.Fprintf(w, " %x", h)
+func writeProofLine(t *testing.T, w io.Writer, prefix string, proof [][]byte) {
+	t.Helper()
+	if _, err := io.WriteString(w, prefix); err != nil {
+		t.Fatalf("io.WriteString: %v", err)
 	}
-	io.WriteString(w, "\n")
+	for _, h := range proof {
+		if _, err := fmt.Fprintf(w, " %x", h); err != nil {
+			t.Fatalf("fmt.Fprintf: %v", err)
+		}
+	}
+	if _, err := io.WriteString(w, "\n"); err != nil {
+		t.Fatalf("io.WriteString: %v", err)
+	}
 }
 
 func TestSubtreeHashVectors(t *testing.T) {
 	tree := subtreeVectorTree()
 	h := sha256.New()
-	for end := 1; end <= subtreeVectorMax; end++ {
-		for start := 0; start < end; start++ {
-			if !isValidSubtree(start, end) {
+	for end := uint64(1); end <= subtreeVectorMax; end++ {
+		for start := range end {
+			if err := isSubtreeValid(start, end); err != nil {
 				continue
 			}
-			subtreeHash := tree.SubtreeHashAt(uint64(start), uint64(end))
-			fmt.Fprintf(h, "[%d, %d) %x\n", start, end, subtreeHash)
+			subtreeHash := tree.SubtreeHashAt(start, end)
+			if _, err := fmt.Fprintf(h, "[%d, %d) %x\n", start, end, subtreeHash); err != nil {
+				t.Fatalf("fmt.Fprintf: %v", err)
+			}
 		}
 	}
 
@@ -81,17 +81,17 @@ func TestSubtreeHashVectors(t *testing.T) {
 func TestSubtreeInclusionProofVectors(t *testing.T) {
 	tree := subtreeVectorTree()
 	h := sha256.New()
-	for end := 1; end <= subtreeVectorMax; end++ {
-		for start := 0; start < end; start++ {
-			if !isValidSubtree(start, end) {
+	for end := uint64(1); end <= subtreeVectorMax; end++ {
+		for start := range end {
+			if err := isSubtreeValid(start, end); err != nil {
 				continue
 			}
 			for index := start; index < end; index++ {
-				proof, err := tree.SubtreeInclusionProof(uint64(index), uint64(start), uint64(end))
+				proof, err := tree.SubtreeInclusionProof(index, start, end)
 				if err != nil {
 					t.Fatalf("SubtreeInclusionProof(%d, %d, %d): %v", index, start, end, err)
 				}
-				writeProofLine(h, fmt.Sprintf("%d [%d, %d)", index, start, end), proof)
+				writeProofLine(t, h, fmt.Sprintf("%d [%d, %d)", index, start, end), proof)
 			}
 		}
 	}
@@ -104,17 +104,17 @@ func TestSubtreeInclusionProofVectors(t *testing.T) {
 func TestSubtreeConsistencyProofVectors(t *testing.T) {
 	tree := subtreeVectorTree()
 	h := sha256.New()
-	for n := 0; n <= subtreeVectorMax; n++ {
-		for end := 1; end <= n; end++ {
-			for start := 0; start < end; start++ {
-				if !isValidSubtree(start, end) {
+	for n := range subtreeVectorMax + 1 {
+		for end := uint64(1); end <= n; end++ {
+			for start := range end {
+				if err := isSubtreeValid(start, end); err != nil {
 					continue
 				}
-				proof, err := tree.SubtreeConsistencyProof(uint64(start), uint64(end), uint64(n))
+				proof, err := tree.SubtreeConsistencyProof(start, end, n)
 				if err != nil {
 					t.Fatalf("SubtreeConsistencyProof(%d, %d, %d): %v", start, end, n, err)
 				}
-				writeProofLine(h, fmt.Sprintf("[%d, %d) %d", start, end, n), proof)
+				writeProofLine(t, h, fmt.Sprintf("[%d, %d) %d", start, end, n), proof)
 			}
 		}
 	}
