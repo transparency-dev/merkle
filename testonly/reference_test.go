@@ -104,8 +104,10 @@ func refConsistencyProof(entries [][]byte, size2, size1 uint64, hasher merkle.Lo
 
 // refSubtreeConsistencyProof returns the subtree consistency proof for the
 // subtree [start, end) in a Merkle tree with the given entries and size.
-// This is a reference implementation for cross-checking.
-func refSubtreeConsistencyProof(entries [][]byte, size, start, end uint64, hasher merkle.LogHasher, haveRoot1 bool) [][]byte {
+// This is a reference implementation based on the recursive algorithm from
+// the RFC to be used for cross-checking only.
+func refSubtreeConsistencyProof(start, end uint64, entries [][]byte, known bool, hasher merkle.LogHasher) [][]byte {
+	size := uint64(len(entries))
 	if start >= end {
 		return nil
 	}
@@ -116,7 +118,7 @@ func refSubtreeConsistencyProof(entries [][]byte, size, start, end uint64, hashe
 	if start == 0 && end == size {
 		// Record the hash of this subtree if it's not the root for which the proof
 		// was originally requested (which happens when [start, end) is a full subtree).
-		if !haveRoot1 {
+		if !known {
 			return [][]byte{refRootHash(entries[:size], hasher)}
 		}
 		return nil
@@ -130,14 +132,14 @@ func refSubtreeConsistencyProof(entries [][]byte, size, start, end uint64, hashe
 	// subtree.
 	case end <= split:
 		return append(
-			refSubtreeConsistencyProof(entries[:split], split, start, end, hasher, haveRoot1),
+			refSubtreeConsistencyProof(start, end, entries[:split], known, hasher),
 			refRootHash(entries[split:], hasher))
 	// The subtree is on the right of split. Prove that the subtree is consistent
 	// with the subtree on the right of split, and record the root of the left
 	// subtree.
 	case split <= start:
 		return append(
-			refSubtreeConsistencyProof(entries[split:], size-split, start-split, end-split, hasher, haveRoot1),
+			refSubtreeConsistencyProof(start-split, end-split, entries[split:], known, hasher),
 			refRootHash(entries[:split], hasher))
 	// Otherwise, split is between start and end.
 	// This means that start is 0.
@@ -158,7 +160,7 @@ func refSubtreeConsistencyProof(entries [][]byte, size, start, end uint64, hashe
 	//     - Thus, k must be 0, meaning start is 0.
 	default:
 		return append(
-			refSubtreeConsistencyProof(entries[split:], size-split, 0, end-split, hasher, false),
+			refSubtreeConsistencyProof(0, end-split, entries[split:], false, hasher),
 			refRootHash(entries[:split], hasher))
 	}
 }

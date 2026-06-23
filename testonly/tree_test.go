@@ -223,7 +223,7 @@ func TestSubtreeTreeConsistencyProof(t *testing.T) {
 					if err != nil {
 						t.Fatalf("SubtreeConsistencyProof: %v", err)
 					}
-					want := refSubtreeConsistencyProof(entries[:size], size, start, end, mt.hasher, true)
+					want := refSubtreeConsistencyProof(start, end, entries[:size], true, mt.hasher)
 					if diff := cmp.Diff(got, want, cmpopts.EquateEmpty()); diff != "" {
 						t.Errorf("SubtreeConsistencyProof: diff (-got +want)\n%s", diff)
 					}
