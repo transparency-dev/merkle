@@ -250,16 +250,32 @@ func decompInclProof(index, size uint64) (int, int) {
 	return inner, border
 }
 
-// decompSubtreeProof returns the exact proof slice indices (subInner, inner,
-// and inner+subBorder) needed to reconstruct hash1.
+// decompSubtreeProof computes the exact proof slice indices needed to reconstruct
+// the [start, end) subtree root (hash1):
+//   - subInner: end index of inner proof hashes inside the subtree (proof[:subInner])
+//   - inner: start index of border proof hashes (proof[inner:])
+//   - inner+subBorder: end index of border proof hashes inside the subtree
 func decompSubtreeProof(start, end, size uint64, border int) (int, int, int) {
+	// xor trims the common prefix between the first and last entry. The bit len
+	// of the result is the height of the subtree.
 	h := bits.Len64((end - 1) ^ start)
+	// Using a similar technique, we compute where paths to leaves |end-1| and
+	// |size-1| diverge.
 	forkLevel := bits.Len64((end - 1) ^ (size - 1))
+	// Height of the rightmost full subtree within the argument subtree.
+	// The proof starts at this level.
 	shift := bits.TrailingZeros64(end - start)
 
+	// Number of inner proof nodes from level |shift| up to subtree height |h|
+	// (clamped at |forkLevel|) that belong inside the [start, end) subtree.
 	subInner := min(h, forkLevel) - shift
+	// Total number of inner proof nodes between level |shift| and |forkLevel|.
 	inner := forkLevel - shift
+	// Number of border proof nodes above |forkLevel| and below subtree height |h|
+	// that belong inside the [start, end) subtree.
 	subBorder := max(0, border-bits.OnesCount64((end-1)>>uint(h)))
+	// The proof slice indices needed to reconstruct hash1 are [0:subInner] for inner
+	// chaining and [inner:inner+subBorder] for border chaining.
 	return subInner, inner, inner + subBorder
 }
 
