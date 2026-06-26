@@ -168,9 +168,9 @@ func RootFromSubtreeConsistencyProof(hasher merkle.LogHasher, start, end, size u
 }
 
 func rootFromSubtreeConsistencyProof(hasher merkle.LogHasher, start, end, size uint64, proof [][]byte, subRoot []byte) ([]byte, error) {
-	// If the right end of the subtree overlaps with the right end of the parent
-	// tree, the proof allows reconstructing the tree root directly from the
-	// argument subtree root |subRoot|.
+	// If the right end of the subtree is also the right end of the parent tree,
+	// the proof allows reconstructing the tree root directly from the argument
+	// subtree root |subRoot|.
 	if end == size {
 		// Find the root of the subtree.
 		// xor trims the common prefix between the first and last entry. The bit len
@@ -187,27 +187,27 @@ func rootFromSubtreeConsistencyProof(hasher merkle.LogHasher, start, end, size u
 	}
 
 	// Otherwise, we need to:
-	//   - Verify that nodes in the proof that belongs to the subtree are consistent
+	//   - Verify that nodes in the proof that belong to the subtree are consistent
 	//     with the argument subtree root |subRoot|.
-	//   - Reconstruct the parent tree root from the the argument subtree root
+	//   - Reconstruct the parent tree root from the argument subtree root
 	//     grown into a subtree of the parent tree of size |size|.
 	//
 	// Split the proof in two, where paths to leaves |end-1| and |size-1| diverge.
 	forkLevel, border := decompInclProof(end-1, size)
-	// Height of the rightmost full subtree within the argument subtree.
+	// Height of the rightmost perfect subtree within the argument subtree.
 	// The proof starts at this level.
 	shift := bits.TrailingZeros64(end - start)
-	// Number of level between the root of that subtree and the end the the first
+	// Number of levels between the root of that subtree and the end of the first
 	// part of the proof.
 	inner := forkLevel - shift // Note: shift < inner if end < size.
 
 	// The first node of the proof is the root of the rightmost subtree within
 	// the argument subtree.
 	seed, pStart := proof[0], 1
-	// Unless the argument subtree is full, in which case that rightmost subtree
-	// is the argument subtree itself. Its root is not included in the proof
-	// since a client verifying a subtree inclusion proof is expected to already
-	// know what the root of that subtree is.
+	// Unless the argument subtree is perfect, in which case that rightmost
+	// subtree is the argument subtree itself. Its root is not included in the
+	// proof since a client verifying a subtree inclusion proof is expected to
+	// already know what the root of that subtree is.
 	if (end - start) == 1<<uint(shift) {
 		seed, pStart = subRoot, 0
 	}
@@ -220,13 +220,13 @@ func rootFromSubtreeConsistencyProof(hasher merkle.LogHasher, start, end, size u
 
 	mask := (end - 1) >> uint(shift) // Start chaining from level |shift|.
 
-	// If the argument subtree is not full, the proof includes somes nodes that
+	// If the argument subtree is not perfect, the proof includes some nodes that
 	// belong to the subtree. We must verify that these nodes chain correctly to
 	// the argument subtree root.
 	if pStart == 1 {
-		subInner, innerIdx, borderEnd := decompSubtreeProof(start, end, size, border)
-		hash1 := chainInnerRight(hasher, seed, proof[:subInner], mask)
-		hash1 = chainBorderRight(hasher, hash1, proof[innerIdx:borderEnd])
+		subInner, subBorder := decompSubtreeProof(start, end, size, border, proof)
+		hash1 := chainInnerRight(hasher, seed, subInner, mask)
+		hash1 = chainBorderRight(hasher, hash1, subBorder)
 		if err := verifyMatch(hash1, subRoot); err != nil {
 			return nil, err
 		}
@@ -254,44 +254,43 @@ func decompInclProof(index, size uint64) (int, int) {
 }
 
 // decompSubtreeProof computes the exact proof slice indices needed to
-// reconstruct the [start, end) subtree root
-//   - subInner: end index of inner proof hashes inside the subtree
-//     (proof[:subInner]), regardless of the size of the parent tree.
-//     These nodes can be left or right siblings depending on the level at
-//     which they are used in the proof. Only left siblings are required to
-//     reconstruct the subtree root.
-//   - inner: end index of inner proof hashes inside the tree, and potentially
-//     outside of the subtree. It is also the start index of border proof
-//     hashes (proof[inner:]). Border proof hashes are left siblings only.
-//     There's one per level and they can be inside or outside of the subtree.
-//   - inner+subBorder: end index of border proof hashes inside the subtree.
-//     (proof[inner:subBorderEnd]). These nodes are left siblings only.
-func decompSubtreeProof(start, end, size uint64, border int) (subInner int, inner int, subBorderEnd int) {
+// reconstruct the [start, end) subtree root.
+//   - proof[0:subInner]: inner proof hashes under the subtree root node
+//     in a tree of size |end| or |size|. These nodes can be inside or outside
+//     of the subtree, and left or right siblings depending on the level at
+//     which they are used in the proof. Only left siblings (except possibly
+//     the first node) are required to reconstruct the subtree root hash, and
+//     right siblings can be ignored.
+//   - proof[inner:inner+subBorder]: border proof hashes, inside the subtree.
+//     These nodes are left siblings only, and there's one hash per level.
+func decompSubtreeProof(start, end, size uint64, border int, proof [][]byte) (subInnerProof [][]byte, subBorderProof [][]byte) {
 	// xor trims the common prefix between the first and last entry. The bit len
 	// of the result is the height of the subtree.
 	h := bits.Len64((end - 1) ^ start)
 	// Using a similar technique, we compute where paths to leaves |end-1| and
 	// |size-1| diverge.
 	forkLevel := bits.Len64((end - 1) ^ (size - 1))
-	// Height of the rightmost full subtree within the argument subtree.
+	// Height of the rightmost perfect subtree within the argument subtree.
 	// The proof starts at this level.
 	shift := bits.TrailingZeros64(end - start)
 
 	// Number of inner proof nodes from level |shift| up to subtree height |h|
 	// (clamped at |forkLevel|) that belong inside the [start, end) subtree.
 	// We take the minimum between h and forkLevel to make sure that subInner
-	// isn't higher than the subtree root. Substract shift since the proof
+	// isn't higher than the subtree root. Subtract shift since the proof
 	// starts at this level.
-	subInner = min(h, forkLevel) - shift
+	subInner := min(h, forkLevel) - shift
 	// Total number of inner proof nodes between level |shift| and |forkLevel|.
-	inner = forkLevel - shift
+	// It delimits the end of the inner proof nodes, and the beginning of the
+	// border nodes.
+	inner := forkLevel - shift
 	// Number of border proof nodes above |forkLevel| and below subtree height |h|
 	// that belong inside the [start, end) subtree. Use max as the border proof
-	// might not include any node that belong to the subtree.
+	// might not include any nodes that belong to the subtree.
 	subBorder := max(0, border-bits.OnesCount64((end-1)>>uint(h)))
 	// The proof slice indices needed to reconstruct hash1 are [0:subInner] for
 	// inner-right chaining and [inner:inner+subBorder] for border chaining.
-	return subInner, inner, inner + subBorder
+	return proof[0:subInner], proof[inner : inner+subBorder]
 }
 
 func innerProofSize(index, size uint64) int {
