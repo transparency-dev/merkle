@@ -104,6 +104,20 @@ func VerifyConsistency(hasher merkle.LogHasher, size1, size2 uint64, proof [][]b
 	return verifyMatch(hash2, root2)
 }
 
+// VerifySubtreeConsistency checks that the passed-in subtree consistency proof
+// is valid between the passed in subtree indices and parent tree size, with
+// respect to the corresponding subtree root node hash. It Requires:
+//   - 0 <= start < end <= size.
+//   - start to be a multiple of the smallest power of two greater than or equal to
+//     (end - start)
+func VerifySubtreeConsistency(hasher merkle.LogHasher, start, end, size uint64, proof [][]byte, root1, root2 []byte) error {
+	hash2, err := RootFromSubtreeConsistencyProof(hasher, start, end, size, proof, root1)
+	if err != nil {
+		return err
+	}
+	return verifyMatch(hash2, root2)
+}
+
 // RootFromConsistencyProof calculates the expected root hash for a tree of the
 // given size2, provided a tree of size1 with root1, and a consistency proof.
 // Requires 0 < size1 <= size2.
@@ -122,35 +136,133 @@ func RootFromConsistencyProof(hasher merkle.LogHasher, size1, size2 uint64, proo
 	case len(proof) == 0:
 		return nil, errors.New("empty proof")
 	}
+	return rootFromSubtreeConsistencyProof(hasher, 0, size1, size2, proof, root1)
+}
 
-	inner, border := decompInclProof(size1-1, size2)
-	shift := bits.TrailingZeros64(size1)
-	inner -= shift // Note: shift < inner if size1 < size2.
-
-	// The proof includes the root hash for the sub-tree of size 2^shift.
-	seed, start := proof[0], 1
-	if size1 == 1<<uint(shift) { // Unless size1 is that very 2^shift.
-		seed, start = root1, 0
+// RootFromSubtreeConsistencyProof calculates the expected root hash for a
+// parent tree of the given size, from a subtree [start, end) root and a
+// consistency proof.
+//
+// It requires:
+//   - 0 <= start < end <= size.
+//   - start to be a multiple of the smallest power of two greater than or equal to
+//     (end - start)
+//
+// Returns an error if the proof does not hash to the provided subtree root.
+func RootFromSubtreeConsistencyProof(hasher merkle.LogHasher, start, end, size uint64, proof [][]byte, subRoot []byte) ([]byte, error) {
+	err := isSubtreeValid(start, end)
+	switch {
+	case err != nil:
+		return nil, fmt.Errorf("subtree invalid: %v", err)
+	case size < end:
+		return nil, fmt.Errorf("size (%d) < end (%d)", size, end)
+	case start == 0 && size == end:
+		if len(proof) > 0 {
+			return nil, errors.New("start=0 and end=size, but proof is not empty")
+		}
+		return subRoot, nil
+	case len(proof) == 0:
+		return nil, errors.New("empty proof")
 	}
-	if got, want := len(proof), start+inner+border; got != want {
-		return nil, fmt.Errorf("wrong proof size %d, want %d", got, want)
-	}
-	proof = proof[start:]
-	// Now len(proof) == inner+border, and proof is effectively a suffix of
-	// inclusion proof for entry |size1-1| in a tree of size |size2|.
+	return rootFromSubtreeConsistencyProof(hasher, start, end, size, proof, subRoot)
+}
 
-	// Verify the first root.
-	mask := (size1 - 1) >> uint(shift) // Start chaining from level |shift|.
-	hash1 := chainInnerRight(hasher, seed, proof[:inner], mask)
-	hash1 = chainBorderRight(hasher, hash1, proof[inner:])
-	if err := verifyMatch(hash1, root1); err != nil {
+func rootFromSubtreeConsistencyProof(hasher merkle.LogHasher, start, end, size uint64, proof [][]byte, subRoot []byte) ([]byte, error) {
+	// If the right end of the subtree overlaps with the right end of the parent
+	// tree, the proof allows reconstructing the tree root directly from the
+	// argument subtree root |subRoot|.
+	if end == size {
+		// Find the root of the subtree.
+		// xor trims the common prefix between the first and last entry. The bit len
+		// of the result is the height of the subtree.
+		level := bits.Len64((end - 1) ^ start) // Height of the subtree.
+		index := start >> level
+		// To reconstruct the root from the subtree root, we need one left sibling
+		// node for each level where the subtree's ancestor is a right child.
+		want := bits.OnesCount64(index)
+		if got := len(proof); got != want {
+			return nil, fmt.Errorf("wrong proof size %d, want %d", got, want)
+		}
+		return chainBorderRight(hasher, subRoot, proof), nil
+	}
+
+	// Otherwise, we need to:
+	//   - Verify that nodes in the proof that belongs to the subtree are consistent
+	//     with the argument subtree root |subRoot|.
+	//   - Reconstruct the parent tree root from the the argument subtree root
+	//     grown into a subtree of the parent tree of size |size|.
+	//
+	// Split the proof in two, where paths to leaves |end-1| and |size-1| diverge.
+	forkLevel := bits.Len64((end - 1) ^ (size - 1))
+	// Height of the rightmost full subtree within the argument subtree.
+	// The proof starts at this level.
+	shift := bits.TrailingZeros64(end - start)
+
+	// The first node of the proof is the root of the rightmost subtree within
+	// the argument subtree.
+	seed, pStart := proof[0], 1
+	// Unless the argument subtree is full, in which case that rightmost subtree
+	// is the argument subtree itself. Its root is not included in the proof
+	// since a client verifying a subtree inclusion proof is expected to already
+	// know what the root of that subtree is.
+	if (end - start) == 1<<uint(shift) {
+		seed, pStart = subRoot, 0
+	}
+	wantProofLen := pStart + (forkLevel - shift) + bits.OnesCount64((end-1)>>forkLevel)
+	if got := len(proof); got != wantProofLen {
+		return nil, fmt.Errorf("wrong proof size %d, want %d", got, wantProofLen)
+	}
+	proof = proof[pStart:]
+
+	// Compute the root of the [start, end) subtree for trees of sizes
+	// |end| and |size|.
+	subtreeRoot, grownSubtreeRoot, remainingProof := chainSubtree(hasher, seed, proof, start, end, size)
+	if err := verifyMatch(subtreeRoot, subRoot); err != nil {
 		return nil, err
 	}
 
-	// Verify the second root.
-	hash2 := chainInner(hasher, seed, proof[:inner], mask)
-	hash2 = chainBorderRight(hasher, hash2, proof[inner:])
-	return hash2, nil
+	// The remainder of the proof is an inclusion proof for grownSubtreeRoot
+	// into the parent tree of size |size|.
+	// Shift the tree down for that node to be a leaf.
+	// xor trims the common prefix between the first and last entry. The bit len
+	// of the result is the height of the subtree.
+	srHeight := bits.Len64((end - 1) ^ start)
+	// shifting indexes srHeight times gives the tree size at level srHeight.
+	sIndex := start >> uint(srHeight)
+	sSize := ((size - 1) >> uint(srHeight)) + 1
+	return RootFromInclusionProof(hasher, sIndex, sSize, grownSubtreeRoot, remainingProof)
+}
+
+// chainSubtree hashes nodes from proof up to subtree [start, end)'s root
+// for trees of sizes |end| and |size|. Returns the two root hashes, and the
+// remaining proof hashes.
+func chainSubtree(hasher merkle.LogHasher, seed []byte, proof [][]byte, start, end, size uint64) ([]byte, []byte, [][]byte) {
+	// Height of the rightmost full subtree within the argument subtree.
+	// The proof starts at this level.
+	shift := bits.TrailingZeros64(end - start)
+	// xor trims the common prefix between the first and last entry. The bit len
+	// of the result is the height of the subtree.
+	h := bits.Len64((end - 1) ^ start)
+	// The level at which the path between nodes at indexs |end-1| and |size-1|
+	// separate.
+	forkLevel := bits.Len64((end - 1) ^ (size - 1))
+
+	subtreeRoot, grownSubtreeRoot := seed, seed
+	i := 0
+	for lvl := shift; lvl < h; lvl++ {
+		// If we're at a level where a left sibling is missing, hash it.
+		if ((end-1)>>lvl)&1 == 1 {
+			subtreeRoot = hasher.HashChildren(proof[i], subtreeRoot)
+			grownSubtreeRoot = hasher.HashChildren(proof[i], grownSubtreeRoot)
+			i++
+			// Otherwise, it's a right sibling, but only as long as we're below
+			// forkLevel, as there are no right siblings above it.
+		} else if lvl < forkLevel {
+			grownSubtreeRoot = hasher.HashChildren(grownSubtreeRoot, proof[i])
+			i++
+		}
+	}
+	return subtreeRoot, grownSubtreeRoot, proof[i:]
 }
 
 // decompInclProof breaks down inclusion proof for a leaf at the specified
@@ -165,6 +277,8 @@ func decompInclProof(index, size uint64) (int, int) {
 }
 
 func innerProofSize(index, size uint64) int {
+	// Height of the first node where the paths of leaves at |index| and |size-1|
+	// diverge.
 	return bits.Len64(index ^ (size - 1))
 }
 
@@ -177,18 +291,6 @@ func chainInner(hasher merkle.LogHasher, seed []byte, proof [][]byte, index uint
 		if (index>>uint(i))&1 == 0 {
 			seed = hasher.HashChildren(seed, h)
 		} else {
-			seed = hasher.HashChildren(h, seed)
-		}
-	}
-	return seed
-}
-
-// chainInnerRight computes a subtree hash like chainInner, but only takes
-// hashes to the left from the path into consideration, which effectively means
-// the result is a hash of the corresponding earlier version of this subtree.
-func chainInnerRight(hasher merkle.LogHasher, seed []byte, proof [][]byte, index uint64) []byte {
-	for i, h := range proof {
-		if (index>>uint(i))&1 == 1 {
 			seed = hasher.HashChildren(h, seed)
 		}
 	}
