@@ -531,8 +531,10 @@ func consistencyProbes(rootDir string) error {
 		return err
 	}
 
-	if err := staticConsistencyProbes(staticDir); err != nil {
-		return err
+	for _, p := range staticConsistencyProbes() {
+		if err := writeConsistencyProbe(staticDir, p); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -604,13 +606,13 @@ func corruptedConsistencyProbes(dir string, size1, size2 uint64, proof [][]byte,
 	return nil
 }
 
-func staticConsistencyProbes(dir string) error {
+func staticConsistencyProbes() []consistencyProbe {
 	root1 := []byte("don't care 1")
 	root2 := []byte("don't care 2")
 	proof1 := [][]byte{}
 	proof2 := [][]byte{sha256EmptyTreeHash}
 
-	tests := []consistencyProbe{
+	return []consistencyProbe{
 		{0, 0, root1, root2, proof1, "sizes are equal (zero) but roots are not", true},
 		{1, 1, root1, root2, proof1, "sizes are equal (one) but roots are not", true},
 		{0, 0, root1, root1, proof1, "sizes are equal (zero) and proof is empty", true},
@@ -632,9 +634,80 @@ func staticConsistencyProbes(dir string) error {
 		{0, 1, sha256EmptyTreeHash, root2, proof1, "size1 is zero and size2 is not zero", true},
 		{0, 1, sha256EmptyTreeHash, sha256EmptyTreeHash, proof2, "consistency check on empty tree (size1 is zero) is useless", true},
 	}
+}
 
-	for _, p := range tests {
-		if err := writeConsistencyProbe(dir, p); err != nil {
+func writeConsistencyProbe(dir string, probe consistencyProbe) error {
+	fn := fileName(probe.Desc)
+
+	probeJson, err := json.MarshalIndent(probe, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshaling probe: %s", err)
+	}
+
+	fileLocation := filepath.Join(dir, fn)
+	if err := os.WriteFile(fileLocation, probeJson, 0644); err != nil {
+		return fmt.Errorf("writing probe: %s: %s", fn, err)
+	}
+
+	return nil
+}
+
+// =============================================================================
+// Subtree Consistency Proofs
+// =============================================================================
+
+// subtreeConsistencyProbe is a parameter set for subtree consistency proof
+// verification.
+type subtreeConsistencyProbe struct {
+	Start uint64   `json:"start"`
+	End   uint64   `json:"end"`
+	Size  uint64   `json:"size"`
+	Root1 []byte   `json:"root1"`
+	Root2 []byte   `json:"root2"`
+	Proof [][]byte `json:"proof"`
+
+	Desc      string `json:"desc"`
+	WantError bool   `json:"wantErr"`
+}
+
+func subtreeConsistencyProbes(rootDir string) error {
+	for i, p := range consistencyProofs {
+		dir := filepath.Join(rootDir, strconv.Itoa(i))
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return err
+		}
+
+		if err := corruptedSubtreeConsistencyProbes(dir, p.size1, p.size2, p.proof,
+			roots[p.size1-1], roots[p.size2-1]); err != nil {
+			return fmt.Errorf("write subtree consistency test data: %s", err)
+		}
+	}
+
+	staticDir := filepath.Join(rootDir, "additional")
+	if err := os.MkdirAll(staticDir, 0755); err != nil {
+		return err
+	}
+
+	if err := staticSubtreeConsistencyProbes(staticDir); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func corruptedSubtreeConsistencyProbes(dir string, size1, size2 uint64, proof [][]byte, root1, root2 []byte) error {
+	happyPath := subtreeConsistencyProbe{0, size1, size2, root1, root2, proof, "happy path", false}
+	if err := writeSubtreeConsistencyProbe(dir, happyPath); err != nil {
+		return err
+	}
+
+	if len(proof) == 0 {
+		return nil
+	}
+
+	probes := invalidSubtreeConsistencyProof(size1, size2, root1, root2, proof)
+	for _, p := range probes {
+		if err := writeSubtreeConsistencyProbe(dir, p); err != nil {
 			return err
 		}
 	}
@@ -642,7 +715,54 @@ func staticConsistencyProbes(dir string) error {
 	return nil
 }
 
-func writeConsistencyProbe(dir string, probe consistencyProbe) error {
+func invalidSubtreeConsistencyProof(size1, size2 uint64, root1, root2 []byte, proof [][]byte) []subtreeConsistencyProbe {
+	cProbes := invalidConsistencyProof(size1, size2, root1, root2, proof)
+	ret := make([]subtreeConsistencyProbe, 0, len(cProbes)+1)
+	for _, p := range cProbes {
+		ret = append(ret, subtreeConsistencyProbe{
+			Start:     0,
+			End:       p.Size1,
+			Size:      p.Size2,
+			Root1:     p.Root1,
+			Root2:     p.Root2,
+			Proof:     p.Proof,
+			Desc:      p.Desc,
+			WantError: p.WantError,
+		})
+	}
+	ret = append(ret, subtreeConsistencyProbe{
+		Start:     1,
+		End:       15,
+		Size:      15,
+		Root1:     root1,
+		Root2:     root2,
+		Proof:     proof,
+		Desc:      "invalid subtree",
+		WantError: true,
+	})
+	return ret
+}
+
+func staticSubtreeConsistencyProbes(dir string) error {
+	for _, p := range staticConsistencyProbes() {
+		sp := subtreeConsistencyProbe{
+			Start:     0,
+			End:       p.Size1,
+			Size:      p.Size2,
+			Root1:     p.Root1,
+			Root2:     p.Root2,
+			Proof:     p.Proof,
+			Desc:      p.Desc,
+			WantError: p.WantError,
+		}
+		if err := writeSubtreeConsistencyProbe(dir, sp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func writeSubtreeConsistencyProbe(dir string, probe subtreeConsistencyProbe) error {
 	fn := fileName(probe.Desc)
 
 	probeJson, err := json.MarshalIndent(probe, "", "  ")
@@ -709,5 +829,10 @@ func main() {
 	consistencyDir := "testdata/consistency"
 	if err := consistencyProbes(consistencyDir); err != nil {
 		log.Fatalf("writing consistency test data: %s", err)
+	}
+
+	subtreeConsistencyDir := "testdata/subtreeconsistency"
+	if err := subtreeConsistencyProbes(subtreeConsistencyDir); err != nil {
+		log.Fatalf("writing subtree consistency test data: %s", err)
 	}
 }
