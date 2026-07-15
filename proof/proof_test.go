@@ -820,3 +820,34 @@ func inclusion(t *testing.T, index, size uint64) Nodes {
 	}
 	return n
 }
+
+func TestFindSubtrees(t *testing.T) {
+	for _, tc := range []struct {
+		start, end uint64
+		want       []Subtree
+		wantErr    bool
+	}{
+		{start: 5, end: 5, wantErr: true},
+		{start: 6, end: 5, wantErr: true},
+		{start: 0, end: 1, want: []Subtree{{Start: 0, End: 1}}},
+		{start: 5, end: 13, want: []Subtree{{Start: 4, End: 8}, {Start: 8, End: 13}}},
+		{start: 7, end: 9, want: []Subtree{{Start: 7, End: 8}, {Start: 8, End: 9}}},
+	} {
+		t.Run(fmt.Sprintf("%d:%d", tc.start, tc.end), func(t *testing.T) {
+			got, err := FindSubtrees(tc.start, tc.end)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("FindSubtrees: %v", err)
+			}
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("FindSubtrees mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+

@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"io"
 	"testing"
+
+	"github.com/transparency-dev/merkle/proof"
 )
 
 // These tests reproduce the accumulated test vectors from the "Subtree Test
@@ -121,5 +123,39 @@ func TestSubtreeConsistencyProofVectors(t *testing.T) {
 	const want = "c586ebbb73a5621baf2140095d87dde934e3b6503a562a1a5215b8209edd083d"
 	if got := fmt.Sprintf("%x", h.Sum(nil)); got != want {
 		t.Errorf("subtree consistency proof vector = %s, want %s", got, want)
+	}
+}
+
+func TestSubtreeCoveringVectors(t *testing.T) {
+	h := sha256.New()
+	for end := uint64(1); end <= subtreeVectorMax; end++ {
+		for start := range end {
+			if err := isSubtreeValid(start, end); err == nil {
+				if _, err := fmt.Fprintf(h, "[%d, %d)\n", start, end); err != nil {
+					t.Fatalf("fmt.Fprintf: %v", err)
+				}
+			} else {
+				subtrees, err := proof.FindSubtrees(start, end)
+				if err != nil {
+					t.Fatalf("FindSubtrees(%d, %d): %v", start, end, err)
+				}
+				switch l := len(subtrees); l {
+				case 1:
+					if _, err := fmt.Fprintf(h, "[%d, %d)\n", subtrees[0].Start, subtrees[0].End); err != nil {
+						t.Fatalf("fmt.Fprintf: %v", err)
+					}
+				case 2:
+					if _, err := fmt.Fprintf(h, "[%d, %d) [%d, %d)\n", subtrees[0].Start, subtrees[0].End, subtrees[1].Start, subtrees[1].End); err != nil {
+						t.Fatalf("fmt.Fprintf: %v", err)
+					}
+				default:
+					t.Fatalf("FindSubtrees(%d, %d) returned unexpected number of subtrees: %d", start, end, l)
+				}
+			}
+		}
+	}
+	const want = "e0aecb912a10c57d753b6ecc64db73217f9bc4ed10fcb4e9062be3b6fbe1ebfd"
+	if got := fmt.Sprintf("%x", h.Sum(nil)); got != want {
+		t.Errorf("subtree covering vector = %s, want %s", got, want)
 	}
 }
