@@ -275,19 +275,21 @@ type Subtree struct {
 
 // FindSubtrees returns one or two subtrees that efficiently cover [start, end).
 //
-// It corresponds to the "Selecting Two Subtrees" procedure described in Section 4.5.1
-// of draft-ietf-plants-merkle-tree-certs.
+// If the provided [start, end) range is already a valid subtree, then that subtree is returned directly.
+// Otherwise, this function continues by applying the "Selecting Two Subtrees" procedure
+// from Section 4.5.1 of draft-ietf-plants-merkle-tree-certs.
 //
 // Note that:
-//   - the 2nd subtree, if present, is adjacent to the first, and may not be a perfect subtree.
-//   - the returned subtree(s) fully cover the [start, end) range.
-//   - there are no "extra" entries covered past end, but there may be covered entries prior to start.
-//   - the number of entries covered before start is always less than half the size of the first returned subtree.
+//   - If the provided [start, end) range is already a valid subtree, then it is returned as the only entry in the slice.
+//   - The 2nd subtree, if present, is adjacent to the first, and may not be a perfect subtree.
+//   - The returned subtree(s) fully cover the [start, end) range.
+//   - There are no "extra" entries covered past end, but there may be covered entries prior to start.
+//   - The number of entries covered before start is always less than half the size of the first returned subtree.
 func FindSubtrees(start, end uint64) ([]Subtree, error) {
 	if start >= end {
 		return nil, fmt.Errorf("start %d must be strictly less than end %d", start, end)
 	}
-	if end-start == 1 {
+	if end-start == 1 || isSubtreeValid(start, end) == nil {
 		return []Subtree{{Start: start, End: end}}, nil
 	}
 	last := end - 1
