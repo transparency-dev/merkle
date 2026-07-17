@@ -827,11 +827,14 @@ func TestFindSubtrees(t *testing.T) {
 		want       []Subtree
 		wantErr    bool
 	}{
-		{start: 5, end: 5, wantErr: true},
-		{start: 6, end: 5, wantErr: true},
 		{start: 0, end: 1, want: []Subtree{{Start: 0, End: 1}}},
+		{start: 3, end: 4, want: []Subtree{{Start: 3, End: 4}}},
+		{start: 4, end: 6, want: []Subtree{{Start: 4, End: 5}, {Start: 5, End: 6}}},
 		{start: 5, end: 13, want: []Subtree{{Start: 4, End: 8}, {Start: 8, End: 13}}},
 		{start: 7, end: 9, want: []Subtree{{Start: 7, End: 8}, {Start: 8, End: 9}}},
+		//
+		{start: 5, end: 5, wantErr: true},
+		{start: 6, end: 5, wantErr: true},
 	} {
 		t.Run(fmt.Sprintf("%d:%d", tc.start, tc.end), func(t *testing.T) {
 			got, err := FindSubtrees(tc.start, tc.end)
@@ -850,4 +853,3 @@ func TestFindSubtrees(t *testing.T) {
 		})
 	}
 }
-

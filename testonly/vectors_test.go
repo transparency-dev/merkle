@@ -139,17 +139,11 @@ func TestSubtreeCoveringVectors(t *testing.T) {
 				if err != nil {
 					t.Fatalf("FindSubtrees(%d, %d): %v", start, end, err)
 				}
-				switch l := len(subtrees); l {
-				case 1:
-					if _, err := fmt.Fprintf(h, "[%d, %d)\n", subtrees[0].Start, subtrees[0].End); err != nil {
-						t.Fatalf("fmt.Fprintf: %v", err)
-					}
-				case 2:
-					if _, err := fmt.Fprintf(h, "[%d, %d) [%d, %d)\n", subtrees[0].Start, subtrees[0].End, subtrees[1].Start, subtrees[1].End); err != nil {
-						t.Fatalf("fmt.Fprintf: %v", err)
-					}
-				default:
+				if l := len(subtrees); l != 2 {
 					t.Fatalf("FindSubtrees(%d, %d) returned unexpected number of subtrees: %d", start, end, l)
+				}
+				if _, err := fmt.Fprintf(h, "[%d, %d) [%d, %d)\n", subtrees[0].Start, subtrees[0].End, subtrees[1].Start, subtrees[1].End); err != nil {
+					t.Fatalf("fmt.Fprintf: %v", err)
 				}
 			}
 		}

@@ -274,8 +274,15 @@ type Subtree struct {
 }
 
 // FindSubtrees returns one or two subtrees that efficiently cover [start, end).
+//
 // It corresponds to the "Selecting Two Subtrees" procedure described in Section 4.5.1
 // of draft-ietf-plants-merkle-tree-certs.
+//
+// Note that:
+//   - the 2nd subtree, if present, is adjacent to the first, and may not be a perfect subtree.
+//   - the returned subtree(s) fully cover the [start, end) range.
+//   - there are no "extra" entries covered past end, but there may be covered entries prior to start.
+//   - the number of entries covered before start is always less than half the size of the first returned subtree.
 func FindSubtrees(start, end uint64) ([]Subtree, error) {
 	if start >= end {
 		return nil, fmt.Errorf("start %d must be strictly less than end %d", start, end)
