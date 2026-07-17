@@ -268,6 +268,45 @@ func reverse(ids []compact.NodeID) {
 	}
 }
 
+// Subtree represents a valid Merkle subtree [Start, End).
+type Subtree struct {
+	Start, End uint64
+}
+
+// FindSubtrees returns one or two subtrees that efficiently cover [start, end).
+//
+// If the provided [start, end) range is already a valid subtree, then that subtree is returned directly.
+// Otherwise, this function continues by applying the "Selecting Two Subtrees" procedure
+// from Section 4.5.1 of draft-ietf-plants-merkle-tree-certs.
+//
+// Note that:
+//   - If the provided [start, end) range is already a valid subtree, then it is returned as the only entry in the slice.
+//   - The 2nd subtree, if present, is adjacent to the first, and may not be a perfect subtree.
+//   - The returned subtree(s) fully cover the [start, end) range.
+//   - There are no "extra" entries covered past end, but there may be covered entries prior to start.
+//   - The number of entries covered before start is always less than half the size of the first returned subtree.
+func FindSubtrees(start, end uint64) ([]Subtree, error) {
+	if start >= end {
+		return nil, fmt.Errorf("start %d must be strictly less than end %d", start, end)
+	}
+	if end-start == 1 || isSubtreeValid(start, end) == nil {
+		return []Subtree{{Start: start, End: end}}, nil
+	}
+	last := end - 1
+	// Find where start and last's tree paths diverge.
+	split := bits.Len64(start^last) - 1
+	mask := (uint64(1) << split) - 1
+	mid := last & ^mask
+
+	// Maximize the left endpoint.
+	leftSplit := bits.Len64(^start & mask)
+	leftStart := start & ^((uint64(1) << leftSplit) - 1)
+	return []Subtree{
+		{Start: leftStart, End: mid},
+		{Start: mid, End: end},
+	}, nil
+}
+
 // isSubtreeValid returns whether a subtree covers a valid range.
 // A subtree is valid if there exist a parent tree node to:
 // - all the subtree nodes
