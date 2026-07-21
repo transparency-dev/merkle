@@ -108,10 +108,15 @@ func refConsistencyProof(entries [][]byte, size2, size1 uint64, hasher merkle.Lo
 // the RFC to be used for cross-checking only.
 func refSubtreeConsistencyProof(start, end uint64, entries [][]byte, known bool, hasher merkle.LogHasher) [][]byte {
 	size := uint64(len(entries))
-	if start >= end {
+	// Invalid inputs
+	if start > end {
 		return nil
 	}
-	if end == 0 || end > size {
+	if end > size {
+		return nil
+	}
+	// start == end is a valid input, and the proof is always empty
+	if start == end {
 		return nil
 	}
 	// Consistency proof between a tree and itself is empty.

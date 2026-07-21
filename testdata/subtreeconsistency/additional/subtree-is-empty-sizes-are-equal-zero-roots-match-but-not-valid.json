@@ -5,6 +5,6 @@
   "root1": "ZG9uJ3QgY2FyZSAx",
   "root2": "ZG9uJ3QgY2FyZSAx",
   "proof": [],
-  "desc": "sizes are equal (zero) and proof is empty",
+  "desc": "subtree is empty sizes are equal (zero) roots match but not valid",
   "wantErr": true
 }

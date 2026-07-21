@@ -113,6 +113,9 @@ func subtreeConsistency(start, end, size uint64) (Nodes, error) {
 	if start == 0 && end == size {
 		return Nodes{IDs: []compact.NodeID{}}, nil
 	}
+	if start == end {
+		return Nodes{IDs: []compact.NodeID{}}, nil
+	}
 
 	// If end == size, prove inclusion of [start, end) into the tree.
 	if end == size {
@@ -286,11 +289,11 @@ type Subtree struct {
 //   - There are no "extra" entries covered past end, but there may be covered entries prior to start.
 //   - The number of entries covered before start is always less than half the size of the first returned subtree.
 func FindSubtrees(start, end uint64) ([]Subtree, error) {
-	if start >= end {
-		return nil, fmt.Errorf("start %d must be strictly less than end %d", start, end)
+	if start > end {
+		return nil, fmt.Errorf("start %d must be less than or equal to end %d", start, end)
 	}
-	if end-start == 1 || isSubtreeValid(start, end) == nil {
-		return []Subtree{{Start: start, End: end}}, nil
+	if end-start <= 1 {
+		return []Subtree{{Start: start, End: end}, {Start: end, End: end}}, nil
 	}
 	last := end - 1
 	// Find where start and last's tree paths diverge.
@@ -313,10 +316,13 @@ func FindSubtrees(start, end uint64) ([]Subtree, error) {
 // - no extra node to the left of the subtree
 // - potentially extra nodes to the right of the subtree
 func isSubtreeValid(start, end uint64) error {
-	if start >= end {
-		return fmt.Errorf("start %d must be strictly less than end %d", start, end)
+	if start > end {
+		return fmt.Errorf("start %d must be less than or equal to end %d", start, end)
 	}
 	if start == 0 {
+		return nil
+	}
+	if start == end {
 		return nil
 	}
 

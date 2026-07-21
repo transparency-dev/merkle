@@ -1,12 +1,12 @@
 {
-  "start": 0,
-  "end": 0,
+  "start": 1,
+  "end": 1,
   "size": 1,
   "root1": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
   "root2": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
   "proof": [
     "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
   ],
-  "desc": "consistency check on empty tree (size1 is zero) is useless",
+  "desc": "subtree is empty sizes are equal (one) roots valid but proof is not empty",
   "wantErr": true
 }
