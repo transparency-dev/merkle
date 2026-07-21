@@ -204,17 +204,14 @@ func TestSubtreeTreeConsistencyProof(t *testing.T) {
 	if _, err := mt.SubtreeConsistencyProof(0, 6, 3); err == nil {
 		t.Error("SubtreeConsistencyProof(0, 6, 3) succeeded unexpectedly (size < end)")
 	}
-	if _, err := mt.SubtreeConsistencyProof(3, 3, 8); err == nil {
-		t.Error("SubtreeConsistencyProof(3, 3, 8) succeeded unexpectedly (start >= end)")
-	}
 	if _, err := mt.SubtreeConsistencyProof(1, 3, 8); err == nil {
 		t.Error("SubtreeConsistencyProof(1, 3, 8) succeeded unexpectedly (invalid subtree)")
 	}
 
 	maxSize := uint64(len(entries))
-	for end := uint64(1); end <= maxSize; end++ {
-		for size := end; size <= maxSize; size++ {
-			for start := range end {
+	for size := range maxSize + 1 {
+		for end := range size + 1 {
+			for start := range end + 1 {
 				if err := isSubtreeValid(start, end); err != nil {
 					continue
 				}

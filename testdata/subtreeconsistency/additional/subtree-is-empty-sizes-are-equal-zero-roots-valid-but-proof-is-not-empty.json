@@ -1,0 +1,12 @@
+{
+  "start": 0,
+  "end": 0,
+  "size": 0,
+  "root1": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+  "root2": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+  "proof": [
+    "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
+  ],
+  "desc": "subtree is empty sizes are equal (zero) roots valid but proof is not empty",
+  "wantErr": true
+}
