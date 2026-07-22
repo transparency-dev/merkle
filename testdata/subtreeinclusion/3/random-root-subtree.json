@@ -1,0 +1,12 @@
+{
+  "leafIdx": 6,
+  "start": 4,
+  "end": 7,
+  "root": "q6yroAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAGHgASNFY=",
+  "leafHash": "ApjRIpBtz8EIkstTpzmS/FufST6kybrbJ7eRtBJ6f+c=",
+  "proof": [
+    "+sVCA+fMaWzw38tCySodnbr3CtnmIfS9jZhmLwDjwSU="
+  ],
+  "desc": "random root - subtree",
+  "wantErr": true
+}

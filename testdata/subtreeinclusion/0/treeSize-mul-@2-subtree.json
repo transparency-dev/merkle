@@ -1,0 +1,10 @@
+{
+  "leafIdx": 2,
+  "start": 2,
+  "end": 4,
+  "root": "bjQLnP+zepicpUTmu3gKLHiQHT+zNzh2hRGjBhevoB0=",
+  "leafHash": "bjQLnP+zepicpUTmu3gKLHiQHT+zNzh2hRGjBhevoB0=",
+  "proof": null,
+  "desc": "treeSize mul @2 - subtree",
+  "wantErr": true
+}

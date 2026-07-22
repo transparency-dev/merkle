@@ -1,0 +1,10 @@
+{
+  "leafIdx": 1,
+  "start": 1,
+  "end": 2,
+  "root": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+  "leafHash": "bjQLnP+zepicpUTmu3gKLHiQHT+zNzh2hRGjBhevoB0=",
+  "proof": null,
+  "desc": "empty root - subtree",
+  "wantErr": true
+}

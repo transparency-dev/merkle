@@ -1,0 +1,12 @@
+{
+  "start": 4,
+  "end": 8,
+  "size": 4,
+  "root1": "a0eq8p7jwq+a+Im8H7klTavTEXfxYjLdaqsDXKOb9uQ=",
+  "root2": "XcnaeacGWamtVZy3Ad7ZoqudgjqtL0lgz+Nw7/RgQyg=",
+  "proof": [
+    "037kGJdt2VdTwcc4Yrk5j6Kiz5tP8P3+izDNlSCWFLc="
+  ],
+  "desc": "size2 div @2",
+  "wantErr": true
+}

@@ -1,0 +1,10 @@
+{
+  "leafIdx": 6,
+  "start": 4,
+  "end": 7,
+  "root": "rra8/idLcKFPsGel5VeCZNsPqbUa9eC6FZFY8yngbnc=",
+  "leafHash": "ApjRIpBtz8EIkstTpzmS/FufST6kybrbJ7eRtBJ6f+c=",
+  "proof": [],
+  "desc": "removed component - subtree",
+  "wantErr": true
+}
