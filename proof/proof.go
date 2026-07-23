@@ -113,6 +113,9 @@ func subtreeConsistency(start, end, size uint64) (Nodes, error) {
 	if start == 0 && end == size {
 		return Nodes{IDs: []compact.NodeID{}}, nil
 	}
+	if start == end {
+		return Nodes{IDs: []compact.NodeID{}}, nil
+	}
 
 	// If end == size, prove inclusion of [start, end) into the tree.
 	if end == size {
@@ -268,29 +271,25 @@ func reverse(ids []compact.NodeID) {
 	}
 }
 
-// Subtree represents a valid Merkle subtree [Start, End).
-type Subtree struct {
-	Start, End uint64
-}
-
-// FindSubtrees returns one or two subtrees that efficiently cover [start, end).
+// FindSubtrees returns three indices (start, mid, end) defining two adjacent
+// subtrees [start, mid) and [mid, end) that efficiently cover the input range.
 //
-// If the provided [start, end) range is already a valid subtree, then that subtree is returned directly.
-// Otherwise, this function continues by applying the "Selecting Two Subtrees" procedure
-// from Section 4.5.1 of draft-ietf-plants-merkle-tree-certs.
+// This function applies the "Selecting Two Subtrees" procedure from
+// Section 4.5.1 of draft-ietf-plants-merkle-tree-certs.
 //
 // Note that:
-//   - If the provided [start, end) range is already a valid subtree, then it is returned as the only entry in the slice.
-//   - The 2nd subtree, if present, is adjacent to the first, and may not be a perfect subtree.
-//   - The returned subtree(s) fully cover the [start, end) range.
-//   - There are no "extra" entries covered past end, but there may be covered entries prior to start.
-//   - The number of entries covered before start is always less than half the size of the first returned subtree.
-func FindSubtrees(start, end uint64) ([]Subtree, error) {
-	if start >= end {
-		return nil, fmt.Errorf("start %d must be strictly less than end %d", start, end)
+//   - If the input range has a size <= 1, then this function returns [start, end) and an empty subtree [end, end).
+//   - If the provided [start, end) range is already a valid subtree, then it is still split into two smaller subtrees.
+//   - The [mid, end) range, if not empty, is adjacent to the first, and may not be a perfect subtree.
+//   - The returned subtrees ranges fully cover the input range.
+//   - There are no "extra" entries covered past end, but there may be covered entries prior to start (i.e. returned start <= input start).
+//   - The number of entries covered before the input start is always less than half the size of the first returned subtree.
+func FindSubtrees(start, end uint64) (uint64, uint64, uint64, error) {
+	if start > end {
+		return 0, 0, 0, fmt.Errorf("start %d must be less than or equal to end %d", start, end)
 	}
-	if end-start == 1 || isSubtreeValid(start, end) == nil {
-		return []Subtree{{Start: start, End: end}}, nil
+	if end-start <= 1 {
+		return start, end, end, nil
 	}
 	last := end - 1
 	// Find where start and last's tree paths diverge.
@@ -301,10 +300,7 @@ func FindSubtrees(start, end uint64) ([]Subtree, error) {
 	// Maximize the left endpoint.
 	leftSplit := bits.Len64(^start & mask)
 	leftStart := start & ^((uint64(1) << leftSplit) - 1)
-	return []Subtree{
-		{Start: leftStart, End: mid},
-		{Start: mid, End: end},
-	}, nil
+	return leftStart, mid, end, nil
 }
 
 // isSubtreeValid returns whether a subtree covers a valid range.
@@ -313,10 +309,13 @@ func FindSubtrees(start, end uint64) ([]Subtree, error) {
 // - no extra node to the left of the subtree
 // - potentially extra nodes to the right of the subtree
 func isSubtreeValid(start, end uint64) error {
-	if start >= end {
-		return fmt.Errorf("start %d must be strictly less than end %d", start, end)
+	if start > end {
+		return fmt.Errorf("start %d must be less than or equal to end %d", start, end)
 	}
 	if start == 0 {
+		return nil
+	}
+	if start == end {
 		return nil
 	}
 

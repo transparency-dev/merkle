@@ -107,10 +107,22 @@ func VerifyConsistency(hasher merkle.LogHasher, size1, size2 uint64, proof [][]b
 // VerifySubtreeConsistency checks that the passed-in subtree consistency proof
 // is valid between the passed in subtree indices and parent tree size, with
 // respect to the corresponding subtree root node hash. It Requires:
-//   - 0 <= start < end <= size.
+//   - 0 <= start <= end <= size.
 //   - start to be a multiple of the smallest power of two greater than or equal to
 //     (end - start)
 func VerifySubtreeConsistency(hasher merkle.LogHasher, start, end, size uint64, proof [][]byte, subRoot, parentRoot []byte) error {
+	if start == end {
+		if end > size {
+			return fmt.Errorf("size (%d) < end (%d)", size, end)
+		}
+		if len(proof) > 0 {
+			return errors.New("start=end, but proof is not empty")
+		}
+		if !bytes.Equal(subRoot, hasher.EmptyRoot()) {
+			return errors.New("start=end, but subRoot is not empty root")
+		}
+		return nil
+	}
 	hash2, err := RootFromSubtreeConsistencyProof(hasher, start, end, size, proof, subRoot)
 	if err != nil {
 		return err
@@ -144,7 +156,7 @@ func RootFromConsistencyProof(hasher merkle.LogHasher, size1, size2 uint64, proo
 // a consistency proof.
 //
 // It requires:
-//   - 0 <= start < end <= size.
+//   - 0 <= start <= end <= size.
 //   - start to be a multiple of the smallest power of two greater than or equal to
 //     (end - start)
 //
@@ -156,6 +168,16 @@ func RootFromSubtreeConsistencyProof(hasher merkle.LogHasher, start, end, size u
 		return nil, fmt.Errorf("subtree invalid: %v", err)
 	case size < end:
 		return nil, fmt.Errorf("size (%d) < end (%d)", size, end)
+	case start == end && size == 0:
+		if len(proof) > 0 {
+			return nil, errors.New("start=end, but proof is not empty")
+		}
+		if !bytes.Equal(subRoot, hasher.EmptyRoot()) {
+			return nil, errors.New("start=end, but subRoot is not empty root")
+		}
+		return hasher.EmptyRoot(), nil
+	case start == end:
+		return nil, errors.New("cannot reconstruct non-empty tree root from empty subtree")
 	case start == 0 && size == end:
 		if len(proof) > 0 {
 			return nil, errors.New("start=0 and end=size, but proof is not empty")

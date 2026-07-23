@@ -165,10 +165,13 @@ func (t *Tree) getNodes(ids []compact.NodeID) [][]byte {
 // - no extra node to the left of the subtree
 // - potentially extra nodes to the right of the subtree
 func isSubtreeValid(start, end uint64) error {
-	if start >= end {
-		return fmt.Errorf("start %d must be strictly less than end %d", start, end)
+	if start > end {
+		return fmt.Errorf("start %d must be less than or equal to end %d", start, end)
 	}
 	if start == 0 {
+		return nil
+	}
+	if start == end {
 		return nil
 	}
 

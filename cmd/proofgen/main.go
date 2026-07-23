@@ -715,47 +715,92 @@ func corruptedSubtreeConsistencyProbes(dir string, size1, size2 uint64, proof []
 	return nil
 }
 
-func invalidSubtreeConsistencyProof(size1, size2 uint64, root1, root2 []byte, proof [][]byte) []subtreeConsistencyProbe {
-	cProbes := invalidConsistencyProof(size1, size2, root1, root2, proof)
-	ret := make([]subtreeConsistencyProbe, 0, len(cProbes)+1)
-	for _, p := range cProbes {
-		ret = append(ret, subtreeConsistencyProbe{
-			Start:     0,
-			End:       p.Size1,
-			Size:      p.Size2,
-			Root1:     p.Root1,
-			Root2:     p.Root2,
-			Proof:     p.Proof,
-			Desc:      p.Desc,
-			WantError: p.WantError,
-		})
+func invalidSubtreeConsistencyProof(end, size uint64, root1, root2 []byte, proof [][]byte) []subtreeConsistencyProbe {
+	ln := len(proof)
+	ret := []subtreeConsistencyProbe{
+		// Wrong end (size1).
+		{0, end - 1, size, root1, root2, proof, "size1 sub @1", true},
+		{0, end + 1, size, root1, root2, proof, "size1 plus @1", true},
+		{0, end ^ 2, size, root1, root2, proof, "size1 XOR @2", true},
+		// Wrong tree size (size2).
+		{0, end, size * 2, root1, root2, proof, "size2 mul @2", true},
+		{0, end, size / 2, root1, root2, proof, "size2 div @2", true},
+		// Wrong root.
+		{0, end, size, []byte("WrongRoot"), root2, proof, "wrong root1", true},
+		{0, end, size, root1, []byte("WrongRoot"), proof, "wrong root2", true},
+		{0, end, size, root2, root1, proof, "swapped roots", true},
+		// Empty proof.
+		{0, end, size, root1, root2, [][]byte{}, "empty proof", true},
+		// Add garbage at the end.
+		{0, end, size, root1, root2, extend(proof, []byte{}), "trailing garbage", true},
+		{0, end, size, root1, root2, extend(proof, root1), "trailing root1", true},
+		{0, end, size, root1, root2, extend(proof, root2), "trailing root2", true},
+		// Add garbage at the front.
+		{0, end, size, root1, root2, prepend(proof, []byte{}), "preceding garbage", true},
+		{0, end, size, root1, root2, prepend(proof, root1), "preceding root1", true},
+		{0, end, size, root1, root2, prepend(proof, root2), "preceding root2", true},
+		{0, end, size, root1, root2, prepend(proof, proof[0]), "preceding proof @0", true},
 	}
-	ret = append(ret, subtreeConsistencyProbe{
-		Start:     1,
-		End:       15,
-		Size:      15,
-		Root1:     root1,
-		Root2:     root2,
-		Proof:     proof,
-		Desc:      "invalid subtree",
-		WantError: true,
-	})
+
+	// Remove a node from the end.
+	if ln > 0 {
+		ret = append(ret, subtreeConsistencyProbe{0, end, size, root1, root2, proof[:ln-1], "truncated proof", true})
+	}
+
+	// Modify single bit in an element of the proof.
+	for i := range ln {
+		wrongProof := prepend(proof)                          // Copy the proof slice.
+		wrongProof[i] = append([]byte(nil), wrongProof[i]...) // But also the modified data.
+		wrongProof[i][0] ^= 16                                // Flip the bit.
+		desc := fmt.Sprintf("modified proof@%d bit @4", i)
+		ret = append(ret, subtreeConsistencyProbe{0, end, size, root1, root2, wrongProof, desc, true})
+	}
+
 	return ret
 }
 
 func staticSubtreeConsistencyProbes(dir string) error {
-	for _, p := range staticConsistencyProbes() {
-		sp := subtreeConsistencyProbe{
-			Start:     0,
-			End:       p.Size1,
-			Size:      p.Size2,
-			Root1:     p.Root1,
-			Root2:     p.Root2,
-			Proof:     p.Proof,
-			Desc:      p.Desc,
-			WantError: p.WantError,
-		}
-		if err := writeSubtreeConsistencyProbe(dir, sp); err != nil {
+	root1 := []byte("don't care 1")
+	root2 := []byte("don't care 2")
+	proof1 := [][]byte{}
+	proof2 := [][]byte{sha256EmptyTreeHash}
+
+	for _, p := range []subtreeConsistencyProbe{
+		{0, 0, 0, root1, root2, proof1, "sizes are equal (zero) but roots are not", true},
+		{0, 1, 1, root1, root2, proof1, "sizes are equal (one) but roots are not", true},
+		{0, 0, 1, root1, root2, proof1, "size1 is zero and does not equal size2", true},
+		// Sizes that are always consistent.
+		{0, 1, 1, root2, root2, proof1, "sizes are equal (one) and proof is empty", false},
+		// Empty subtree
+		{0, 0, 0, sha256EmptyTreeHash, sha256EmptyTreeHash, proof1, "subtree is empty sizes are equal (zero) subtree root valid proof is empty", false},
+		{0, 0, 0, sha256EmptyTreeHash, root1, proof1, "subtree is empty sizes are equal (zero) subtree root valid tree root random proof is empty", false},
+		{0, 0, 0, sha256EmptyTreeHash, sha256EmptyTreeHash, proof2, "subtree is empty sizes are equal (zero) roots valid but proof is not empty", true},
+		{0, 0, 0, root1, root1, proof1, "subtree is empty sizes are equal (zero) roots match but not valid", true},
+		{1, 1, 1, sha256EmptyTreeHash, sha256EmptyTreeHash, proof1, "subtree is empty sizes are equal (one) subtree root valid proof is empty", false},
+		{1, 1, 1, sha256EmptyTreeHash, root1, proof1, "subtree is empty sizes are equal (one) subtree root valid tree root random proof is empty", false},
+		{1, 1, 1, sha256EmptyTreeHash, sha256EmptyTreeHash, proof2, "subtree is empty sizes are equal (one) roots valid but proof is not empty", true},
+		{1, 1, 1, root1, root1, proof1, "subtree is empty sizes are equal (one) roots match but not valid", true},
+		{1, 1, 2, sha256EmptyTreeHash, sha256EmptyTreeHash, proof1, "subtree is empty subtree root valid proof is empty", false},
+		{1, 1, 2, sha256EmptyTreeHash, sha256EmptyTreeHash, proof1, "subtree is empty subtree root valid tree root random proof is empty", false},
+		{1, 1, 2, sha256EmptyTreeHash, sha256EmptyTreeHash, proof2, "subtree is empty roots valid but proof is not empty", true},
+		{1, 1, 2, root1, root1, proof1, "subtree is empty roots match but not valid", true},
+		// Invalid subtree boundaries (not a multiple of power of 2 >= end - start).
+		{1, 15, 15, root1, root2, proof1, "invalid subtree start 1 end 15 size 15", true},
+		{1, 3, 8, root1, root2, proof1, "invalid subtree start 1 end 3 size 8", true},
+		{2, 5, 8, root1, root2, proof1, "invalid subtree start 2 end 5 size 8", true},
+		{2, 6, 8, root1, root2, proof1, "invalid subtree start 2 end 6 size 8", true},
+		// Time travel to the past.
+		{0, 1, 0, root1, root2, proof1, "size1 is greater than size2", true},
+		{0, 2, 1, root1, root2, proof1, "size1 is greater than size2 again", true},
+		// Empty proof.
+		{0, 1, 2, root1, root2, proof1, "sizes do not match and proof is empty", true},
+		// Roots don't match.
+		{0, 1, 1, sha256EmptyTreeHash, root2, proof1, "roots do not match and sizes are one", true},
+		// Sizes match but the proof is not empty.
+		{0, 0, 0, sha256EmptyTreeHash, sha256EmptyTreeHash, proof2, "sizes match but proof is not empty and sizes are zero", true},
+		{0, 1, 1, sha256EmptyTreeHash, sha256EmptyTreeHash, proof2, "sizes match but proof is not empty and sizes are one", true},
+	} {
+		if err := writeSubtreeConsistencyProbe(dir, p); err != nil {
 			return err
 		}
 	}

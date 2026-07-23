@@ -1,0 +1,10 @@
+{
+  "start": 1,
+  "end": 1,
+  "size": 2,
+  "root1": "ZG9uJ3QgY2FyZSAx",
+  "root2": "ZG9uJ3QgY2FyZSAx",
+  "proof": [],
+  "desc": "subtree is empty roots match but not valid",
+  "wantErr": true
+}

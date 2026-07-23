@@ -457,8 +457,6 @@ func TestSubtreeConsistency(t *testing.T) {
 		wantErr bool
 	}{
 		// Errors.
-		{start: 0, end: 0, size: 0, wantErr: true},                 // start = end = 0
-		{start: 1, end: 1, size: 1, wantErr: true},                 // start = end
 		{start: 2, end: 1, size: 0, wantErr: true},                 // start > end
 		{start: 0, end: 5, size: 0, wantErr: true},                 // end > size
 		{start: 0, end: 9, size: 8, wantErr: true},                 // end > size
@@ -467,6 +465,7 @@ func TestSubtreeConsistency(t *testing.T) {
 
 		// Small trees.
 		// start = 0
+		{start: 0, end: 0, size: 0, want: Nodes{IDs: []compact.NodeID{}}},             // start = end = 0
 		{start: 0, end: 1, size: 2, want: nodes(id(0, 1))},                            // b
 		{start: 0, end: 1, size: 4, want: nodes(id(0, 1), id(1, 1))},                  // b bb
 		{start: 0, end: 1, size: 6, want: rehash(2, 3, id(0, 1), id(1, 1), id(1, 2))}, // b bb cc
@@ -485,12 +484,14 @@ func TestSubtreeConsistency(t *testing.T) {
 		{start: 0, end: 7, size: 8, want: nodes(
 			id(0, 6), id(0, 7), id(1, 2), id(2, 0))}, // g h cc aaa
 		// start > 0
+		{start: 1, end: 1, size: 1, want: Nodes{IDs: []compact.NodeID{}}},                       // start = end
 		{start: 1, end: 2, size: 3, want: rehash(1, 2, id(0, 0), id(0, 2))},                     // a c
 		{start: 1, end: 2, size: 5, want: rehash(2, 3, id(0, 0), id(1, 1), id(0, 4))},           // a bb e
 		{start: 2, end: 4, size: 5, want: rehash(1, 2, id(1, 0), id(0, 4))},                     // aa e
 		{start: 1, end: 2, size: 7, want: rehash(2, 4, id(0, 0), id(1, 1), id(0, 6), id(1, 2))}, // a bb g cc
 		{start: 2, end: 4, size: 10, want: rehash(2, 3, id(1, 0), id(2, 1), id(1, 4))},          // aa bbb ee
 		{start: 4, end: 6, size: 10, want: rehash(2, 3, id(1, 3), id(2, 0), id(1, 4))},          // dd aaa ee
+		{start: 4, end: 4, size: 10, want: Nodes{IDs: []compact.NodeID{}}},                      // start = end
 		{start: 4, end: 7, size: 11, want: rehash(4, 6, // ccc=hash(ee,k)
 			id(0, 6), id(0, 7), id(1, 2), id(2, 0), id(0, 10), id(1, 4))}, // g h cc aaa k ee
 		{start: 4, end: 8, size: 11, want: rehash(1, 3, // ccc=hash(ee,k)
@@ -637,9 +638,9 @@ func TestConsistencySucceedsUpToTreeSize(t *testing.T) {
 
 func TestSubtreeConsistencySucceedsUpToTreeSize(t *testing.T) {
 	const maxSize = uint64(100)
-	for s := uint64(1); s <= maxSize; s++ {
-		for sbe := uint64(1); sbe <= s; sbe++ {
-			for sbs := range sbe {
+	for s := range maxSize + 1 {
+		for sbe := range s + 1 {
+			for sbs := range sbe + 1 {
 				if err := isSubtreeValid(sbs, sbe); err != nil {
 					continue
 				}
@@ -823,26 +824,26 @@ func inclusion(t *testing.T, index, size uint64) Nodes {
 
 func TestFindSubtrees(t *testing.T) {
 	for _, tc := range []struct {
-		start, end uint64
-		want       []Subtree
-		wantErr    bool
+		start, end                      uint64
+		wantStart, wantMid, wantEnd     uint64
+		wantErr                         bool
 	}{
-		// Already-valid subtrees are returned as-is.
 		// Single entry subtrees:
-		{start: 0, end: 1, want: []Subtree{{Start: 0, End: 1}}},
-		{start: 3, end: 4, want: []Subtree{{Start: 3, End: 4}}},
+		{start: 0, end: 1, wantStart: 0, wantMid: 1, wantEnd: 1},
+		{start: 3, end: 4, wantStart: 3, wantMid: 4, wantEnd: 4},
 		// Perfectly aligned subtrees:
-		{start: 4, end: 6, want: []Subtree{{Start: 4, End: 6}}},
-		{start: 16, end: 32, want: []Subtree{{Start: 16, End: 32}}},
+		{start: 4, end: 6, wantStart: 4, wantMid: 5, wantEnd: 6},
+		{start: 16, end: 32, wantStart: 16, wantMid: 24, wantEnd: 32},
 		// Non-perfect trees are split into two:
-		{start: 5, end: 13, want: []Subtree{{Start: 4, End: 8}, {Start: 8, End: 13}}},
-		{start: 7, end: 9, want: []Subtree{{Start: 7, End: 8}, {Start: 8, End: 9}}},
+		{start: 5, end: 13, wantStart: 4, wantMid: 8, wantEnd: 13},
+		{start: 7, end: 9, wantStart: 7, wantMid: 8, wantEnd: 9},
+		// Empty subtrees.
+		{start: 5, end: 5, wantStart: 5, wantMid: 5, wantEnd: 5},
 		// Invalid inputs:
-		{start: 5, end: 5, wantErr: true},
 		{start: 6, end: 5, wantErr: true},
 	} {
 		t.Run(fmt.Sprintf("%d:%d", tc.start, tc.end), func(t *testing.T) {
-			got, err := FindSubtrees(tc.start, tc.end)
+			gotStart, gotMid, gotEnd, err := FindSubtrees(tc.start, tc.end)
 			if tc.wantErr {
 				if err == nil {
 					t.Fatal("expected error, got nil")
@@ -852,8 +853,8 @@ func TestFindSubtrees(t *testing.T) {
 			if err != nil {
 				t.Fatalf("FindSubtrees: %v", err)
 			}
-			if diff := cmp.Diff(tc.want, got); diff != "" {
-				t.Errorf("FindSubtrees mismatch (-want +got):\n%s", diff)
+			if gotStart != tc.wantStart || gotMid != tc.wantMid || gotEnd != tc.wantEnd {
+				t.Errorf("FindSubtrees(%d, %d) = (%d, %d, %d), want (%d, %d, %d)", tc.start, tc.end, gotStart, gotMid, gotEnd, tc.wantStart, tc.wantMid, tc.wantEnd)
 			}
 		})
 	}
