@@ -44,6 +44,45 @@ func FuzzConsistencyProofAndVerify(f *testing.F) {
 	})
 }
 
+// Compute and verify subtree consistency proofs
+func FuzzSubtreeConsistencyProofAndVerify(f *testing.F) {
+	for tSize := range 8 + 1 {
+		for size := range tSize + 1 {
+			for end := range size + 1 {
+				for begin := range end + 1 {
+					f.Add(uint64(tSize), uint64(size), uint64(begin), uint64(end))
+				}
+			}
+		}
+	}
+	f.Fuzz(func(t *testing.T, tSize, size, begin, end uint64) {
+		// necessary to restrict size for compile_native_go_fuzzer
+		if size >= math.MaxUint16 {
+			return
+		}
+		if size > tSize {
+			return
+		}
+		if err := isSubtreeValid(begin, end); err != nil {
+			return
+		}
+		t.Logf("treeSize=%d, size=%d, begin=%d, end=%d", tSize, size, begin, end)
+		if begin > end || end > size {
+			return
+		}
+		tree := newTree(genEntries(tSize))
+		p, err := tree.SubtreeConsistencyProof(begin, end, size)
+		t.Logf("proof=%v", p)
+		if err != nil {
+			t.Error(err)
+		}
+		err = proof.VerifySubtreeConsistency(tree.hasher, begin, end, size, p, tree.SubtreeHashAt(begin, end), tree.HashAt(size))
+		if err != nil {
+			t.Error(err)
+		}
+	})
+}
+
 // Compute and verify inclusion proofs
 func FuzzInclusionProofAndVerify(f *testing.F) {
 	for size := range 8 + 1 {
