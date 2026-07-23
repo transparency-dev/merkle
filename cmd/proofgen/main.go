@@ -756,16 +756,6 @@ func invalidSubtreeConsistencyProof(end, size uint64, root1, root2 []byte, proof
 		ret = append(ret, subtreeConsistencyProbe{0, end, size, root1, root2, wrongProof, desc, true})
 	}
 
-	ret = append(ret, subtreeConsistencyProbe{
-		Start:     1,
-		End:       15,
-		Size:      15,
-		Root1:     root1,
-		Root2:     root2,
-		Proof:     proof,
-		Desc:      "invalid subtree",
-		WantError: true,
-	})
 	return ret
 }
 
@@ -794,6 +784,11 @@ func staticSubtreeConsistencyProbes(dir string) error {
 		{1, 1, 2, sha256EmptyTreeHash, sha256EmptyTreeHash, proof1, "subtree is empty subtree root valid tree root random proof is empty", false},
 		{1, 1, 2, sha256EmptyTreeHash, sha256EmptyTreeHash, proof2, "subtree is empty roots valid but proof is not empty", true},
 		{1, 1, 2, root1, root1, proof1, "subtree is empty roots match but not valid", true},
+		// Invalid subtree boundaries (not a multiple of power of 2 >= end - start).
+		{1, 15, 15, root1, root2, proof1, "invalid subtree start 1 end 15 size 15", true},
+		{1, 3, 8, root1, root2, proof1, "invalid subtree start 1 end 3 size 8", true},
+		{2, 5, 8, root1, root2, proof1, "invalid subtree start 2 end 5 size 8", true},
+		{2, 6, 8, root1, root2, proof1, "invalid subtree start 2 end 6 size 8", true},
 		// Time travel to the past.
 		{0, 1, 0, root1, root2, proof1, "size1 is greater than size2", true},
 		{0, 2, 1, root1, root2, proof1, "size1 is greater than size2 again", true},

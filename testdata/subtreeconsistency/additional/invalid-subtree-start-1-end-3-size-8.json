@@ -1,0 +1,10 @@
+{
+  "start": 1,
+  "end": 3,
+  "size": 8,
+  "root1": "ZG9uJ3QgY2FyZSAx",
+  "root2": "ZG9uJ3QgY2FyZSAy",
+  "proof": [],
+  "desc": "invalid subtree start 1 end 3 size 8",
+  "wantErr": true
+}
