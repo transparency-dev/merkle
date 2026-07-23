@@ -715,21 +715,47 @@ func corruptedSubtreeConsistencyProbes(dir string, size1, size2 uint64, proof []
 	return nil
 }
 
-func invalidSubtreeConsistencyProof(size1, size2 uint64, root1, root2 []byte, proof [][]byte) []subtreeConsistencyProbe {
-	cProbes := invalidConsistencyProof(size1, size2, root1, root2, proof)
-	ret := make([]subtreeConsistencyProbe, 0, len(cProbes)+1)
-	for _, p := range cProbes {
-		ret = append(ret, subtreeConsistencyProbe{
-			Start:     0,
-			End:       p.Size1,
-			Size:      p.Size2,
-			Root1:     p.Root1,
-			Root2:     p.Root2,
-			Proof:     p.Proof,
-			Desc:      p.Desc,
-			WantError: p.WantError,
-		})
+func invalidSubtreeConsistencyProof(end, size uint64, root1, root2 []byte, proof [][]byte) []subtreeConsistencyProbe {
+	ln := len(proof)
+	ret := []subtreeConsistencyProbe{
+		// Wrong end (size1).
+		{0, end - 1, size, root1, root2, proof, "size1 sub @1", true},
+		{0, end + 1, size, root1, root2, proof, "size1 plus @1", true},
+		{0, end ^ 2, size, root1, root2, proof, "size1 XOR @2", true},
+		// Wrong tree size (size2).
+		{0, end, size * 2, root1, root2, proof, "size2 mul @2", true},
+		{0, end, size / 2, root1, root2, proof, "size2 div @2", true},
+		// Wrong root.
+		{0, end, size, []byte("WrongRoot"), root2, proof, "wrong root1", true},
+		{0, end, size, root1, []byte("WrongRoot"), proof, "wrong root2", true},
+		{0, end, size, root2, root1, proof, "swapped roots", true},
+		// Empty proof.
+		{0, end, size, root1, root2, [][]byte{}, "empty proof", true},
+		// Add garbage at the end.
+		{0, end, size, root1, root2, extend(proof, []byte{}), "trailing garbage", true},
+		{0, end, size, root1, root2, extend(proof, root1), "trailing root1", true},
+		{0, end, size, root1, root2, extend(proof, root2), "trailing root2", true},
+		// Add garbage at the front.
+		{0, end, size, root1, root2, prepend(proof, []byte{}), "preceding garbage", true},
+		{0, end, size, root1, root2, prepend(proof, root1), "preceding root1", true},
+		{0, end, size, root1, root2, prepend(proof, root2), "preceding root2", true},
+		{0, end, size, root1, root2, prepend(proof, proof[0]), "preceding proof @0", true},
 	}
+
+	// Remove a node from the end.
+	if ln > 0 {
+		ret = append(ret, subtreeConsistencyProbe{0, end, size, root1, root2, proof[:ln-1], "truncated proof", true})
+	}
+
+	// Modify single bit in an element of the proof.
+	for i := range ln {
+		wrongProof := prepend(proof)                          // Copy the proof slice.
+		wrongProof[i] = append([]byte(nil), wrongProof[i]...) // But also the modified data.
+		wrongProof[i][0] ^= 16                                // Flip the bit.
+		desc := fmt.Sprintf("modified proof@%d bit @4", i)
+		ret = append(ret, subtreeConsistencyProbe{0, end, size, root1, root2, wrongProof, desc, true})
+	}
+
 	ret = append(ret, subtreeConsistencyProbe{
 		Start:     1,
 		End:       15,
