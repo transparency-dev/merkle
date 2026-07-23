@@ -600,8 +600,8 @@ func TestSubtreeConsistency(t *testing.T) {
 
 func TestInclusionSucceedsUpToTreeSize(t *testing.T) {
 	const maxSize = uint64(555)
-	for ts := uint64(1); ts <= maxSize; ts++ {
-		for i := ts; i < ts; i++ {
+	for ts := range maxSize + 1 {
+		for i := range ts {
 			if _, err := Inclusion(i, ts); err != nil {
 				t.Errorf("Inclusion(ts:%d, i:%d) = %v", ts, i, err)
 			}
@@ -609,7 +609,7 @@ func TestInclusionSucceedsUpToTreeSize(t *testing.T) {
 	}
 }
 
-func TestInclusionSubtreeSucceedsUpToTreeSize(t *testing.T) {
+func TestSubtreeInclusionSucceedsUpToTreeSize(t *testing.T) {
 	const maxSize = uint64(555)
 	for sbe := uint64(1); sbe <= maxSize; sbe++ {
 		for sbs := range sbe {
@@ -824,9 +824,9 @@ func inclusion(t *testing.T, index, size uint64) Nodes {
 
 func TestFindSubtrees(t *testing.T) {
 	for _, tc := range []struct {
-		start, end                      uint64
-		wantStart, wantMid, wantEnd     uint64
-		wantErr                         bool
+		start, end                  uint64
+		wantStart, wantMid, wantEnd uint64
+		wantErr                     bool
 	}{
 		// Single entry subtrees:
 		{start: 0, end: 1, wantStart: 0, wantMid: 1, wantEnd: 1},
