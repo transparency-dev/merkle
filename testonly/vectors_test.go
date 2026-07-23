@@ -130,11 +130,11 @@ func TestSubtreeCoveringVectors(t *testing.T) {
 	h := sha256.New()
 	for end := range subtreeVectorMax + 1 {
 		for start := range end + 1 {
-			left, right, err := proof.FindSubtrees(start, end)
+			start, mid, end, err := proof.FindSubtrees(start, end)
 			if err != nil {
 				t.Fatalf("FindSubtrees(%d, %d): %v", start, end, err)
 			}
-			if _, err := fmt.Fprintf(h, "[%d, %d) [%d, %d)\n", left.Start, left.End, right.Start, right.End); err != nil {
+			if _, err := fmt.Fprintf(h, "[%d, %d) [%d, %d)\n", start, mid, mid, end); err != nil {
 				t.Fatalf("fmt.Fprintf: %v", err)
 			}
 		}

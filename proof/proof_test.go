@@ -824,27 +824,26 @@ func inclusion(t *testing.T, index, size uint64) Nodes {
 
 func TestFindSubtrees(t *testing.T) {
 	for _, tc := range []struct {
-		start, end uint64
-		wantLeft   Subtree
-		wantRight  Subtree
-		wantErr    bool
+		start, end                      uint64
+		wantStart, wantMid, wantEnd     uint64
+		wantErr                         bool
 	}{
 		// Single entry subtrees:
-		{start: 0, end: 1, wantLeft: Subtree{Start: 0, End: 1}, wantRight: Subtree{Start: 1, End: 1}},
-		{start: 3, end: 4, wantLeft: Subtree{Start: 3, End: 4}, wantRight: Subtree{Start: 4, End: 4}},
+		{start: 0, end: 1, wantStart: 0, wantMid: 1, wantEnd: 1},
+		{start: 3, end: 4, wantStart: 3, wantMid: 4, wantEnd: 4},
 		// Perfectly aligned subtrees:
-		{start: 4, end: 6, wantLeft: Subtree{Start: 4, End: 5}, wantRight: Subtree{Start: 5, End: 6}},
-		{start: 16, end: 32, wantLeft: Subtree{Start: 16, End: 24}, wantRight: Subtree{Start: 24, End: 32}},
+		{start: 4, end: 6, wantStart: 4, wantMid: 5, wantEnd: 6},
+		{start: 16, end: 32, wantStart: 16, wantMid: 24, wantEnd: 32},
 		// Non-perfect trees are split into two:
-		{start: 5, end: 13, wantLeft: Subtree{Start: 4, End: 8}, wantRight: Subtree{Start: 8, End: 13}},
-		{start: 7, end: 9, wantLeft: Subtree{Start: 7, End: 8}, wantRight: Subtree{Start: 8, End: 9}},
+		{start: 5, end: 13, wantStart: 4, wantMid: 8, wantEnd: 13},
+		{start: 7, end: 9, wantStart: 7, wantMid: 8, wantEnd: 9},
 		// Empty subtrees.
-		{start: 5, end: 5, wantLeft: Subtree{Start: 5, End: 5}, wantRight: Subtree{Start: 5, End: 5}},
+		{start: 5, end: 5, wantStart: 5, wantMid: 5, wantEnd: 5},
 		// Invalid inputs:
 		{start: 6, end: 5, wantErr: true},
 	} {
 		t.Run(fmt.Sprintf("%d:%d", tc.start, tc.end), func(t *testing.T) {
-			gotLeft, gotRight, err := FindSubtrees(tc.start, tc.end)
+			gotStart, gotMid, gotEnd, err := FindSubtrees(tc.start, tc.end)
 			if tc.wantErr {
 				if err == nil {
 					t.Fatal("expected error, got nil")
@@ -854,11 +853,8 @@ func TestFindSubtrees(t *testing.T) {
 			if err != nil {
 				t.Fatalf("FindSubtrees: %v", err)
 			}
-			if diff := cmp.Diff(tc.wantLeft, gotLeft); diff != "" {
-				t.Errorf("FindSubtrees left mismatch (-want +got):\n%s", diff)
-			}
-			if diff := cmp.Diff(tc.wantRight, gotRight); diff != "" {
-				t.Errorf("FindSubtrees right mismatch (-want +got):\n%s", diff)
+			if gotStart != tc.wantStart || gotMid != tc.wantMid || gotEnd != tc.wantEnd {
+				t.Errorf("FindSubtrees(%d, %d) = (%d, %d, %d), want (%d, %d, %d)", tc.start, tc.end, gotStart, gotMid, gotEnd, tc.wantStart, tc.wantMid, tc.wantEnd)
 			}
 		})
 	}
