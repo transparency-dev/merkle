@@ -304,6 +304,34 @@ func TestRefSubtreeConsistencyProof(t *testing.T) {
 			hd("ca854ea128ed050b41b35ffc1b87b8eb2bde461e9e3b5596ece6b9d5975a0ae0"),
 			hd("d37ee418976dd95753c1c73862b9398fa2a2cf9b4ff0fdfe8b30cd95209614b7"),
 		}},
+		// Non-zero starting subtrees:
+		// Right half [4, 8) in size 8 requires the root of the left half [0, 4).
+		{start: 4, end: 8, size: 8, known: true, want: [][]byte{
+			hd("d37ee418976dd95753c1c73862b9398fa2a2cf9b4ff0fdfe8b30cd95209614b7"),
+		}},
+		// Subtree of size 1 not starting at 0 ([4, 5) in size 8):
+		{start: 4, end: 5, size: 8, known: true, want: [][]byte{
+			hd("4271a26be0d8a84f0bd54c8c302e7cb3a3b5d1fa6780a40bcce2873477dab658"),
+			hd("ca854ea128ed050b41b35ffc1b87b8eb2bde461e9e3b5596ece6b9d5975a0ae0"),
+			hd("d37ee418976dd95753c1c73862b9398fa2a2cf9b4ff0fdfe8b30cd95209614b7"),
+		}},
+		// Subtree ending at size not starting at 0 ([6, 8) in size 8):
+		{start: 6, end: 8, size: 8, known: true, want: [][]byte{
+			hd("0ebc5d3437fbe2db158b9f126a1d118e308181031d0a949f8dededebc558ef6a"),
+			hd("d37ee418976dd95753c1c73862b9398fa2a2cf9b4ff0fdfe8b30cd95209614b7"),
+		}},
+		// Perfect subtree not starting at 0, not ending at size ([2, 4) in size 8):
+		{start: 2, end: 4, size: 8, known: true, want: [][]byte{
+			hd("fac54203e7cc696cf0dfcb42c92a1d9dbaf70ad9e621f4bd8d98662f00e3c125"),
+			hd("6b47aaf29ee3c2af9af889bc1fb9254dabd31177f16232dd6aab035ca39bf6e4"),
+		}},
+		// Imperfect subtree not starting at 0, not ending at size ([4, 7) in size 8):
+		{start: 4, end: 7, size: 8, known: true, want: [][]byte{
+			hd("b08693ec2e721597130641e8211e7eedccb4c26413963eee6c1e2ed16ffb1a5f"),
+			hd("46f6ffadd3d06a09ff3c5860d2755c8b9819db7df44251788c7d8e3180de8eb1"),
+			hd("0ebc5d3437fbe2db158b9f126a1d118e308181031d0a949f8dededebc558ef6a"),
+			hd("d37ee418976dd95753c1c73862b9398fa2a2cf9b4ff0fdfe8b30cd95209614b7"),
+		}},
 	} {
 		t.Run(fmt.Sprintf("start:%d end:%d size:%d known:%t", tc.start, tc.end, tc.size, tc.known), func(t *testing.T) {
 			got := refSubtreeConsistencyProof(tc.start, tc.end, entries[:tc.size], tc.known, hasher)
