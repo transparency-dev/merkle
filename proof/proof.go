@@ -285,15 +285,15 @@ type Subtree struct {
 //   - If the provided subtree has a size <= 1, then this function returns that subtree and an empty subtree.
 //   - If the provided [start, end) range is already a valid subtree, then it is still split into two smaller subtrees.
 //   - The 2nd subtree, if not empty, is adjacent to the first, and may not be a perfect subtree.
-//   - The returned subtree(s) fully cover the [start, end) range.
+//   - The returned subtrees fully cover the [start, end) range.
 //   - There are no "extra" entries covered past end, but there may be covered entries prior to start.
 //   - The number of entries covered before start is always less than half the size of the first returned subtree.
-func FindSubtrees(start, end uint64) ([]Subtree, error) {
+func FindSubtrees(start, end uint64) (Subtree, Subtree, error) {
 	if start > end {
-		return nil, fmt.Errorf("start %d must be less than or equal to end %d", start, end)
+		return Subtree{}, Subtree{}, fmt.Errorf("start %d must be less than or equal to end %d", start, end)
 	}
 	if end-start <= 1 {
-		return []Subtree{{Start: start, End: end}, {Start: end, End: end}}, nil
+		return Subtree{Start: start, End: end}, Subtree{Start: end, End: end}, nil
 	}
 	last := end - 1
 	// Find where start and last's tree paths diverge.
@@ -304,10 +304,7 @@ func FindSubtrees(start, end uint64) ([]Subtree, error) {
 	// Maximize the left endpoint.
 	leftSplit := bits.Len64(^start & mask)
 	leftStart := start & ^((uint64(1) << leftSplit) - 1)
-	return []Subtree{
-		{Start: leftStart, End: mid},
-		{Start: mid, End: end},
-	}, nil
+	return Subtree{Start: leftStart, End: mid}, Subtree{Start: mid, End: end}, nil
 }
 
 // isSubtreeValid returns whether a subtree covers a valid range.
