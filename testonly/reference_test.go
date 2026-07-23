@@ -261,3 +261,56 @@ func TestRefConsistencyProof(t *testing.T) {
 		})
 	}
 }
+
+func TestRefSubtreeConsistencyProof(t *testing.T) {
+	entries := LeafInputs()
+	hasher := rfc6962.DefaultHasher
+	fullRoot8 := refRootHash(entries[:8], hasher)
+
+	for _, tc := range []struct {
+		start uint64
+		end   uint64
+		size  uint64
+		known bool
+		want  [][]byte
+	}{
+		// Empty subtrees (start == end) always return nil (empty proof).
+		{start: 0, end: 0, size: 8, known: true, want: nil},
+		{start: 4, end: 4, size: 8, known: true, want: nil},
+		{start: 8, end: 8, size: 8, known: true, want: nil},
+		// Invalid ranges return nil.
+		{start: 5, end: 3, size: 8, known: true, want: nil},
+		{start: 0, end: 10, size: 8, known: true, want: nil},
+		// Full tree [0, 8) in size 8.
+		{start: 0, end: 8, size: 8, known: true, want: nil},
+		{start: 0, end: 8, size: 8, known: false, want: [][]byte{fullRoot8}},
+		// Left half [0, 4) in size 8 requires the root of the right half [4, 8).
+		{start: 0, end: 4, size: 8, known: true, want: [][]byte{
+			hd("6b47aaf29ee3c2af9af889bc1fb9254dabd31177f16232dd6aab035ca39bf6e4"),
+		}},
+		// Prefix subtree consistency cases matching TestRefConsistencyProof (start=0):
+		{start: 0, end: 1, size: 1, known: true, want: nil},
+		{start: 0, end: 1, size: 8, known: true, want: [][]byte{
+			hd("96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7"),
+			hd("5f083f0a1a33ca076a95279832580db3e0ef4584bdff1f54c8a360f50de3031e"),
+			hd("6b47aaf29ee3c2af9af889bc1fb9254dabd31177f16232dd6aab035ca39bf6e4"),
+		}},
+		{start: 0, end: 2, size: 5, known: true, want: [][]byte{
+			hd("5f083f0a1a33ca076a95279832580db3e0ef4584bdff1f54c8a360f50de3031e"),
+			hd("bc1a0643b12e4d2d7c77918f44e0f4f79a838b6cf9ec5b5c283e1f4d88599e6b"),
+		}},
+		{start: 0, end: 6, size: 8, known: true, want: [][]byte{
+			hd("0ebc5d3437fbe2db158b9f126a1d118e308181031d0a949f8dededebc558ef6a"),
+			hd("ca854ea128ed050b41b35ffc1b87b8eb2bde461e9e3b5596ece6b9d5975a0ae0"),
+			hd("d37ee418976dd95753c1c73862b9398fa2a2cf9b4ff0fdfe8b30cd95209614b7"),
+		}},
+	} {
+		t.Run(fmt.Sprintf("start:%d end:%d size:%d known:%t", tc.start, tc.end, tc.size, tc.known), func(t *testing.T) {
+			got := refSubtreeConsistencyProof(tc.start, tc.end, entries[:tc.size], tc.known, hasher)
+			if diff := cmp.Diff(got, tc.want); diff != "" {
+				t.Errorf("refSubtreeConsistencyProof: diff (-got +want)\n%s", diff)
+			}
+		})
+	}
+}
+
