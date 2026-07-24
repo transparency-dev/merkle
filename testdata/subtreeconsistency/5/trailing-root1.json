@@ -1,0 +1,15 @@
+{
+  "start": 7,
+  "end": 8,
+  "size": 8,
+  "root1": "Rvb/rdPQagn/PFhg0nVci5gZ2330QlF4jH2OMYDejrE=",
+  "root2": "XcnaeacGWamtVZy3Ad7ZoqudgjqtL0lgz+Nw7/RgQyg=",
+  "proof": [
+    "sIaT7C5yFZcTBkHoIR5+7cy0wmQTlj7ubB4u0W/7Gl8=",
+    "DrxdNDf74tsVi58Sah0RjjCBgQMdCpSfje3t68VY72o=",
+    "037kGJdt2VdTwcc4Yrk5j6Kiz5tP8P3+izDNlSCWFLc=",
+    "Rvb/rdPQagn/PFhg0nVci5gZ2330QlF4jH2OMYDejrE="
+  ],
+  "desc": "trailing root1",
+  "wantErr": true
+}

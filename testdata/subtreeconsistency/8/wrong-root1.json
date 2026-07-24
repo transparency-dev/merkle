@@ -1,0 +1,12 @@
+{
+  "start": 4,
+  "end": 7,
+  "size": 7,
+  "root1": "V3JvbmdSb290",
+  "root2": "3bib5AOAnjJXUNPSY814kpwpQreUKjS3fhIslZSnTIw=",
+  "proof": [
+    "037kGJdt2VdTwcc4Yrk5j6Kiz5tP8P3+izDNlSCWFLc="
+  ],
+  "desc": "wrong root1",
+  "wantErr": true
+}

@@ -90,6 +90,74 @@ var (
 		}},
 	}
 
+	subtreeConsistencyProofs = []struct {
+		start uint64
+		end   uint64
+		size  uint64
+		proof [][]byte
+		root1 []byte
+		root2 []byte
+	}{
+		// start = zero:
+		{0, 1, 1, nil, roots[0], roots[0]},
+		{0, 1, 8, [][]byte{
+			dh("96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7", 32),
+			dh("5f083f0a1a33ca076a95279832580db3e0ef4584bdff1f54c8a360f50de3031e", 32),
+			dh("6b47aaf29ee3c2af9af889bc1fb9254dabd31177f16232dd6aab035ca39bf6e4", 32),
+		}, roots[0], roots[7]},
+		{0, 6, 8, [][]byte{
+			dh("0ebc5d3437fbe2db158b9f126a1d118e308181031d0a949f8dededebc558ef6a", 32),
+			dh("ca854ea128ed050b41b35ffc1b87b8eb2bde461e9e3b5596ece6b9d5975a0ae0", 32),
+			dh("d37ee418976dd95753c1c73862b9398fa2a2cf9b4ff0fdfe8b30cd95209614b7", 32),
+		}, roots[5], roots[7]},
+		{0, 2, 5, [][]byte{
+			dh("5f083f0a1a33ca076a95279832580db3e0ef4584bdff1f54c8a360f50de3031e", 32),
+			dh("bc1a0643b12e4d2d7c77918f44e0f4f79a838b6cf9ec5b5c283e1f4d88599e6b", 32),
+		}, roots[1], roots[4]},
+		{0, 6, 7, [][]byte{
+			dh("0ebc5d3437fbe2db158b9f126a1d118e308181031d0a949f8dededebc558ef6a", 32),
+			dh("b08693ec2e721597130641e8211e7eedccb4c26413963eee6c1e2ed16ffb1a5f", 32),
+			dh("d37ee418976dd95753c1c73862b9398fa2a2cf9b4ff0fdfe8b30cd95209614b7", 32),
+		}, roots[5], roots[6]},
+		// start > 0:
+		// end = size and single entry:
+		{7, 8, 8, [][]byte{
+			dh("b08693ec2e721597130641e8211e7eedccb4c26413963eee6c1e2ed16ffb1a5f", 32),
+			dh("0ebc5d3437fbe2db158b9f126a1d118e308181031d0a949f8dededebc558ef6a", 32),
+			roots[3],
+		}, dh("46f6ffadd3d06a09ff3c5860d2755c8b9819db7df44251788c7d8e3180de8eb1", 32), roots[7]},
+		// end = size and perfect:
+		{4, 8, 8, [][]byte{
+			roots[3], // left sibling [0, 4)
+		}, dh("6b47aaf29ee3c2af9af889bc1fb9254dabd31177f16232dd6aab035ca39bf6e4", 32), roots[7]},
+		{6, 8, 8, [][]byte{
+			dh("0ebc5d3437fbe2db158b9f126a1d118e308181031d0a949f8dededebc558ef6a", 32),
+			roots[3],
+		}, dh("ca854ea128ed050b41b35ffc1b87b8eb2bde461e9e3b5596ece6b9d5975a0ae0", 32), roots[7]},
+		// end = size and not perfect:
+		{4, 7, 7, [][]byte{
+			roots[3],
+		}, dh("837dbb152e9b079010717e84e865da4ebc0fa198a806d59d31bf15accef22d0e", 32), roots[6]},
+		// end < size and single entry:
+		{4, 5, 8, [][]byte{
+			dh("4271a26be0d8a84f0bd54c8c302e7cb3a3b5d1fa6780a40bcce2873477dab658", 32),
+			dh("ca854ea128ed050b41b35ffc1b87b8eb2bde461e9e3b5596ece6b9d5975a0ae0", 32),
+			roots[3],
+		}, dh("bc1a0643b12e4d2d7c77918f44e0f4f79a838b6cf9ec5b5c283e1f4d88599e6b", 32), roots[7]},
+		// end < size and perfect:
+		{2, 4, 8, [][]byte{
+			dh("fac54203e7cc696cf0dfcb42c92a1d9dbaf70ad9e621f4bd8d98662f00e3c125", 32),
+			dh("6b47aaf29ee3c2af9af889bc1fb9254dabd31177f16232dd6aab035ca39bf6e4", 32),
+		}, dh("5f083f0a1a33ca076a95279832580db3e0ef4584bdff1f54c8a360f50de3031e", 32), roots[7]},
+		// end < size and not perfect:
+		{4, 7, 8, [][]byte{
+			dh("b08693ec2e721597130641e8211e7eedccb4c26413963eee6c1e2ed16ffb1a5f", 32),
+			dh("46f6ffadd3d06a09ff3c5860d2755c8b9819db7df44251788c7d8e3180de8eb1", 32),
+			dh("0ebc5d3437fbe2db158b9f126a1d118e308181031d0a949f8dededebc558ef6a", 32),
+			roots[3],
+		}, dh("837dbb152e9b079010717e84e865da4ebc0fa198a806d59d31bf15accef22d0e", 32), roots[7]},
+	}
+
 	roots = [][]byte{
 		dh("6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d", 32),
 		dh("fac54203e7cc696cf0dfcb42c92a1d9dbaf70ad9e621f4bd8d98662f00e3c125", 32),
@@ -671,14 +739,14 @@ type subtreeConsistencyProbe struct {
 }
 
 func subtreeConsistencyProbes(rootDir string) error {
-	for i, p := range consistencyProofs {
+	for i, p := range subtreeConsistencyProofs {
 		dir := filepath.Join(rootDir, strconv.Itoa(i))
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return err
 		}
 
-		if err := corruptedSubtreeConsistencyProbes(dir, p.size1, p.size2, p.proof,
-			roots[p.size1-1], roots[p.size2-1]); err != nil {
+		if err := corruptedSubtreeConsistencyProbes(dir, p.start, p.end, p.size, p.proof,
+			p.root1, p.root2); err != nil {
 			return fmt.Errorf("write subtree consistency test data: %s", err)
 		}
 	}
@@ -695,8 +763,8 @@ func subtreeConsistencyProbes(rootDir string) error {
 	return nil
 }
 
-func corruptedSubtreeConsistencyProbes(dir string, size1, size2 uint64, proof [][]byte, root1, root2 []byte) error {
-	happyPath := subtreeConsistencyProbe{0, size1, size2, root1, root2, proof, "happy path", false}
+func corruptedSubtreeConsistencyProbes(dir string, start, end, size uint64, proof [][]byte, root1, root2 []byte) error {
+	happyPath := subtreeConsistencyProbe{start, end, size, root1, root2, proof, "happy path", false}
 	if err := writeSubtreeConsistencyProbe(dir, happyPath); err != nil {
 		return err
 	}
@@ -705,7 +773,7 @@ func corruptedSubtreeConsistencyProbes(dir string, size1, size2 uint64, proof []
 		return nil
 	}
 
-	probes := invalidSubtreeConsistencyProof(size1, size2, root1, root2, proof)
+	probes := invalidSubtreeConsistencyProof(start, end, size, root1, root2, proof)
 	for _, p := range probes {
 		if err := writeSubtreeConsistencyProbe(dir, p); err != nil {
 			return err
@@ -715,36 +783,40 @@ func corruptedSubtreeConsistencyProbes(dir string, size1, size2 uint64, proof []
 	return nil
 }
 
-func invalidSubtreeConsistencyProof(end, size uint64, root1, root2 []byte, proof [][]byte) []subtreeConsistencyProbe {
+func invalidSubtreeConsistencyProof(start, end, size uint64, root1, root2 []byte, proof [][]byte) []subtreeConsistencyProbe {
 	ln := len(proof)
 	ret := []subtreeConsistencyProbe{
-		// Wrong end (size1).
-		{0, end - 1, size, root1, root2, proof, "size1 sub @1", true},
-		{0, end + 1, size, root1, root2, proof, "size1 plus @1", true},
-		{0, end ^ 2, size, root1, root2, proof, "size1 XOR @2", true},
-		// Wrong tree size (size2).
-		{0, end, size * 2, root1, root2, proof, "size2 mul @2", true},
-		{0, end, size / 2, root1, root2, proof, "size2 div @2", true},
+		// Wrong start.
+		{start - 1, end, size, root1, root2, proof, "start sub @1", true},
+		{start + 1, end, size, root1, root2, proof, "start plus @1", true},
+		{start ^ 2, end, size, root1, root2, proof, "start XOR @2", true},
+		// Wrong end.
+		{start, end - 1, size, root1, root2, proof, "end sub @1", true},
+		{start, end + 1, size, root1, root2, proof, "end plus @1", true},
+		{start, end ^ 2, size, root1, root2, proof, "end XOR @2", true},
+		// Wrong tree size.
+		{start, end, size * 2, root1, root2, proof, "size mul @2", true},
+		{start, end, size / 2, root1, root2, proof, "size div @2", true},
 		// Wrong root.
-		{0, end, size, []byte("WrongRoot"), root2, proof, "wrong root1", true},
-		{0, end, size, root1, []byte("WrongRoot"), proof, "wrong root2", true},
-		{0, end, size, root2, root1, proof, "swapped roots", true},
+		{start, end, size, []byte("WrongRoot"), root2, proof, "wrong root1", true},
+		{start, end, size, root1, []byte("WrongRoot"), proof, "wrong root2", true},
+		{start, end, size, root2, root1, proof, "swapped roots", true},
 		// Empty proof.
-		{0, end, size, root1, root2, [][]byte{}, "empty proof", true},
+		{start, end, size, root1, root2, [][]byte{}, "empty proof", true},
 		// Add garbage at the end.
-		{0, end, size, root1, root2, extend(proof, []byte{}), "trailing garbage", true},
-		{0, end, size, root1, root2, extend(proof, root1), "trailing root1", true},
-		{0, end, size, root1, root2, extend(proof, root2), "trailing root2", true},
+		{start, end, size, root1, root2, extend(proof, []byte{}), "trailing garbage", true},
+		{start, end, size, root1, root2, extend(proof, root1), "trailing root1", true},
+		{start, end, size, root1, root2, extend(proof, root2), "trailing root2", true},
 		// Add garbage at the front.
-		{0, end, size, root1, root2, prepend(proof, []byte{}), "preceding garbage", true},
-		{0, end, size, root1, root2, prepend(proof, root1), "preceding root1", true},
-		{0, end, size, root1, root2, prepend(proof, root2), "preceding root2", true},
-		{0, end, size, root1, root2, prepend(proof, proof[0]), "preceding proof @0", true},
+		{start, end, size, root1, root2, prepend(proof, []byte{}), "preceding garbage", true},
+		{start, end, size, root1, root2, prepend(proof, root1), "preceding root1", true},
+		{start, end, size, root1, root2, prepend(proof, root2), "preceding root2", true},
+		{start, end, size, root1, root2, prepend(proof, proof[0]), "preceding proof @0", true},
 	}
 
 	// Remove a node from the end.
 	if ln > 0 {
-		ret = append(ret, subtreeConsistencyProbe{0, end, size, root1, root2, proof[:ln-1], "truncated proof", true})
+		ret = append(ret, subtreeConsistencyProbe{start, end, size, root1, root2, proof[:ln-1], "truncated proof", true})
 	}
 
 	// Modify single bit in an element of the proof.
@@ -753,7 +825,7 @@ func invalidSubtreeConsistencyProof(end, size uint64, root1, root2 []byte, proof
 		wrongProof[i] = append([]byte(nil), wrongProof[i]...) // But also the modified data.
 		wrongProof[i][0] ^= 16                                // Flip the bit.
 		desc := fmt.Sprintf("modified proof@%d bit @4", i)
-		ret = append(ret, subtreeConsistencyProbe{0, end, size, root1, root2, wrongProof, desc, true})
+		ret = append(ret, subtreeConsistencyProbe{start, end, size, root1, root2, wrongProof, desc, true})
 	}
 
 	return ret
@@ -768,7 +840,7 @@ func staticSubtreeConsistencyProbes(dir string) error {
 	for _, p := range []subtreeConsistencyProbe{
 		{0, 0, 0, root1, root2, proof1, "sizes are equal (zero) but roots are not", true},
 		{0, 1, 1, root1, root2, proof1, "sizes are equal (one) but roots are not", true},
-		{0, 0, 1, root1, root2, proof1, "size1 is zero and does not equal size2", true},
+		{0, 0, 1, root1, root2, proof1, "end is zero and does not equal size", true},
 		// Sizes that are always consistent.
 		{0, 1, 1, root2, root2, proof1, "sizes are equal (one) and proof is empty", false},
 		// Empty subtree
@@ -785,13 +857,14 @@ func staticSubtreeConsistencyProbes(dir string) error {
 		{1, 1, 2, sha256EmptyTreeHash, sha256EmptyTreeHash, proof2, "subtree is empty roots valid but proof is not empty", true},
 		{1, 1, 2, root1, root1, proof1, "subtree is empty roots match but not valid", true},
 		// Invalid subtree boundaries (not a multiple of power of 2 >= end - start).
+		// Invalid subtree boundaries (not a multiple of power of 2 >= end - start):
 		{1, 15, 15, root1, root2, proof1, "invalid subtree start 1 end 15 size 15", true},
 		{1, 3, 8, root1, root2, proof1, "invalid subtree start 1 end 3 size 8", true},
 		{2, 5, 8, root1, root2, proof1, "invalid subtree start 2 end 5 size 8", true},
 		{2, 6, 8, root1, root2, proof1, "invalid subtree start 2 end 6 size 8", true},
 		// Time travel to the past.
-		{0, 1, 0, root1, root2, proof1, "size1 is greater than size2", true},
-		{0, 2, 1, root1, root2, proof1, "size1 is greater than size2 again", true},
+		{0, 1, 0, root1, root2, proof1, "end is greater than size", true},
+		{0, 2, 1, root1, root2, proof1, "end is greater than size again", true},
 		// Empty proof.
 		{0, 1, 2, root1, root2, proof1, "sizes do not match and proof is empty", true},
 		// Roots don't match.
