@@ -1,12 +1,11 @@
 {
-  "start": 0,
-  "end": 4,
-  "size": 8,
-  "root1": "1vAr+BQ/49rqshJq4qQYJ6rTFhiiVxZtZRaoH1L7jU8=",
-  "root2": "JAvgbsSQQ0ftX3pjarrbnvuS8xJtLwO6s+eSyWEdKlQ=",
+  "start": 6,
+  "end": 7,
+  "size": 7,
+  "root1": "g327FS6bB5AQcX6E6GXaTrwPoZioBtWdMb8VrM7yLQ4=",
+  "root2": "3bib5AOAnjJXUNPSY814kpwpQreUKjS3fhIslZSnTIw=",
   "proof": [
-    "R9xUDJTOtwSiOHXBEnPha7C4qHrthN6RHyEzVoEV8lQ=",
-    "vzGKP3+r1qrDHmnW/gg7DDmJlM2OBXsznSTdo/QBqh4="
+    "037kGJdt2VdTwcc4Yrk5j6Kiz5tP8P3+izDNlSCWFLc="
   ],
   "desc": "start XOR @2",
   "wantErr": true
