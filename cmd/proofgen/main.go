@@ -786,13 +786,13 @@ func corruptedSubtreeConsistencyProbes(dir string, start, end, size uint64, proo
 func invalidSubtreeConsistencyProof(start, end, size uint64, root1, root2 []byte, proof [][]byte) []subtreeConsistencyProbe {
 	ln := len(proof)
 	ret := []subtreeConsistencyProbe{
-		// Wrong end (size1).
-		{start, end - 1, size, root1, root2, proof, "size1 sub @1", true},
-		{start, end + 1, size, root1, root2, proof, "size1 plus @1", true},
-		{start, end ^ 2, size, root1, root2, proof, "size1 XOR @2", true},
-		// Wrong tree size (size2).
-		{start, end, size * 2, root1, root2, proof, "size2 mul @2", true},
-		{start, end, size / 2, root1, root2, proof, "size2 div @2", true},
+		// Wrong end.
+		{start, end - 1, size, root1, root2, proof, "end sub @1", true},
+		{start, end + 1, size, root1, root2, proof, "end plus @1", true},
+		{start, end ^ 2, size, root1, root2, proof, "end XOR @2", true},
+		// Wrong tree size.
+		{start, end, size * 2, root1, root2, proof, "size mul @2", true},
+		{start, end, size / 2, root1, root2, proof, "size div @2", true},
 		// Wrong root.
 		{start, end, size, []byte("WrongRoot"), root2, proof, "wrong root1", true},
 		{start, end, size, root1, []byte("WrongRoot"), proof, "wrong root2", true},
@@ -836,7 +836,7 @@ func staticSubtreeConsistencyProbes(dir string) error {
 	for _, p := range []subtreeConsistencyProbe{
 		{0, 0, 0, root1, root2, proof1, "sizes are equal (zero) but roots are not", true},
 		{0, 1, 1, root1, root2, proof1, "sizes are equal (one) but roots are not", true},
-		{0, 0, 1, root1, root2, proof1, "size1 is zero and does not equal size2", true},
+		{0, 0, 1, root1, root2, proof1, "end is zero and does not equal size", true},
 		// Sizes that are always consistent.
 		{0, 1, 1, root2, root2, proof1, "sizes are equal (one) and proof is empty", false},
 		// Empty subtree
@@ -859,8 +859,8 @@ func staticSubtreeConsistencyProbes(dir string) error {
 		{2, 5, 8, root1, root2, proof1, "invalid subtree start 2 end 5 size 8", true},
 		{2, 6, 8, root1, root2, proof1, "invalid subtree start 2 end 6 size 8", true},
 		// Time travel to the past.
-		{0, 1, 0, root1, root2, proof1, "size1 is greater than size2", true},
-		{0, 2, 1, root1, root2, proof1, "size1 is greater than size2 again", true},
+		{0, 1, 0, root1, root2, proof1, "end is greater than size", true},
+		{0, 2, 1, root1, root2, proof1, "end is greater than size again", true},
 		// Empty proof.
 		{0, 1, 2, root1, root2, proof1, "sizes do not match and proof is empty", true},
 		// Roots don't match.

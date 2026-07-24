@@ -1,0 +1,14 @@
+{
+  "start": 4,
+  "end": 5,
+  "size": 4,
+  "root1": "vBoGQ7EuTS18d5GPROD095qDi2z57FtcKD4fTYhZnms=",
+  "root2": "XcnaeacGWamtVZy3Ad7ZoqudgjqtL0lgz+Nw7/RgQyg=",
+  "proof": [
+    "QnGia+DYqE8L1UyMMC58s6O10fpngKQLzOKHNHfatlg=",
+    "yoVOoSjtBQtBs1/8G4e46yveRh6eO1WW7Oa51ZdaCuA=",
+    "037kGJdt2VdTwcc4Yrk5j6Kiz5tP8P3+izDNlSCWFLc="
+  ],
+  "desc": "size div @2",
+  "wantErr": true
+}

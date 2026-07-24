@@ -1,0 +1,12 @@
+{
+  "start": 4,
+  "end": 5,
+  "size": 7,
+  "root1": "g327FS6bB5AQcX6E6GXaTrwPoZioBtWdMb8VrM7yLQ4=",
+  "root2": "3bib5AOAnjJXUNPSY814kpwpQreUKjS3fhIslZSnTIw=",
+  "proof": [
+    "037kGJdt2VdTwcc4Yrk5j6Kiz5tP8P3+izDNlSCWFLc="
+  ],
+  "desc": "end XOR @2",
+  "wantErr": true
+}
