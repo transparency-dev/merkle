@@ -786,6 +786,10 @@ func corruptedSubtreeConsistencyProbes(dir string, start, end, size uint64, proo
 func invalidSubtreeConsistencyProof(start, end, size uint64, root1, root2 []byte, proof [][]byte) []subtreeConsistencyProbe {
 	ln := len(proof)
 	ret := []subtreeConsistencyProbe{
+		// Wrong start.
+		{start - 1, end, size, root1, root2, proof, "start sub @1", true},
+		{start + 1, end, size, root1, root2, proof, "start plus @1", true},
+		{start ^ 2, end, size, root1, root2, proof, "start XOR @2", true},
 		// Wrong end.
 		{start, end - 1, size, root1, root2, proof, "end sub @1", true},
 		{start, end + 1, size, root1, root2, proof, "end plus @1", true},

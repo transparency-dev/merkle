@@ -1,0 +1,15 @@
+{
+  "start": 3,
+  "end": 7,
+  "size": 8,
+  "root1": "TeH0HwzQLWniGTWgBbtsw3U9gD63gzLddyJoC8fVSXc=",
+  "root2": "JAvgbsSQQ0ftX3pjarrbnvuS8xJtLwO6s+eSyWEdKlQ=",
+  "proof": [
+    "UFFSU1RVVlc=",
+    "YGFiY2RlZmdoaWprbG1ubw==",
+    "7h2aUYYQ98YU/CBBlpoPKZFTPfBLvXSqm9M/Z0e6Phk=",
+    "EAQDNTq5tZyPLwBYQ2j/uFE+Jf7ZbRnbFifehtXLc3w="
+  ],
+  "desc": "start sub @1",
+  "wantErr": true
+}

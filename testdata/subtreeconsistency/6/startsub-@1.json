@@ -1,0 +1,14 @@
+{
+  "start": 3,
+  "end": 5,
+  "size": 8,
+  "root1": "MDE=",
+  "root2": "JAvgbsSQQ0ftX3pjarrbnvuS8xJtLwO6s+eSyWEdKlQ=",
+  "proof": [
+    "QEFCQw==",
+    "oLSr/EirK7ViJ/rRLMBj2gYGnSvVs3J89BmipOf9uk8=",
+    "EAQDNTq5tZyPLwBYQ2j/uFE+Jf7ZbRnbFifehtXLc3w="
+  ],
+  "desc": "startsub @1",
+  "wantErr": true
+}
