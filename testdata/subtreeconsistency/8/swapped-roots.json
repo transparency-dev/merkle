@@ -1,0 +1,12 @@
+{
+  "start": 4,
+  "end": 7,
+  "size": 7,
+  "root1": "3bib5AOAnjJXUNPSY814kpwpQreUKjS3fhIslZSnTIw=",
+  "root2": "g327FS6bB5AQcX6E6GXaTrwPoZioBtWdMb8VrM7yLQ4=",
+  "proof": [
+    "037kGJdt2VdTwcc4Yrk5j6Kiz5tP8P3+izDNlSCWFLc="
+  ],
+  "desc": "swapped roots",
+  "wantErr": true
+}
