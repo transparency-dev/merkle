@@ -16,8 +16,9 @@
 package rfc6962
 
 import (
+	"bytes"
 	"crypto"
-	_ "crypto/sha256" // SHA256 is the default algorithm.
+	"crypto/sha256"
 )
 
 // Domain separation prefixes
@@ -41,12 +42,18 @@ func New(h crypto.Hash) *Hasher {
 
 // EmptyRoot returns a special case for an empty tree.
 func (t *Hasher) EmptyRoot() []byte {
+	if t.Hash == crypto.SHA256 {
+		h := sha256.Sum256(nil)
+		return bytes.Clone(h[:])
+	}
 	return t.New().Sum(nil)
 }
 
 // HashLeaf returns the Merkle tree leaf hash of the data passed in through leaf.
 // The data in leaf is prefixed by the LeafHashPrefix.
 func (t *Hasher) HashLeaf(leaf []byte) []byte {
+	// Note: A SHA-256 fast path using sha256.Sum256 is possible here if leaf data is
+	// staged into an array on the stack, but requires an arbitrary buffer size threshold.
 	h := t.New()
 	h.Write([]byte{RFC6962LeafHashPrefix})
 	h.Write(leaf)
@@ -56,6 +63,10 @@ func (t *Hasher) HashLeaf(leaf []byte) []byte {
 // HashChildren returns the inner Merkle tree node hash of the two child nodes l and r.
 // The hashed structure is NodeHashPrefix||l||r.
 func (t *Hasher) HashChildren(l, r []byte) []byte {
+	if t.Hash == crypto.SHA256 && len(l) == sha256.Size && len(r) == sha256.Size {
+		// Fast path for sha256 common case
+		return hashChildren256(l, r)
+	}
 	h := t.New()
 	b := append(append(append(
 		make([]byte, 0, 1+len(l)+len(r)),
@@ -65,4 +76,14 @@ func (t *Hasher) HashChildren(l, r []byte) []byte {
 
 	h.Write(b)
 	return h.Sum(nil)
+}
+
+// hashChildren256 avoids allocating a sha256.digest and preimage slice by using a fixed 65-byte stack buffer.
+func hashChildren256(l, r []byte) []byte {
+	var b [1 + 2*sha256.Size]byte
+	b[0] = RFC6962NodeHashPrefix
+	copy(b[1:], l)
+	copy(b[1+sha256.Size:], r)
+	h := sha256.Sum256(b[:])
+	return bytes.Clone(h[:])
 }
