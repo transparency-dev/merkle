@@ -78,6 +78,12 @@ func (t *Hasher) HashChildren(l, r []byte) []byte {
 }
 
 // hashChildren256 hashes the fixed 65-byte RFC6962 interior node preimage on the stack.
+//
+// This optimization relies on using the concrete sha256.Sum256 function directly.
+// Because the compiler has full visibility into Sum256, it can prove that b does
+// not outlive the call, keeping b on the stack (1 allocation total for the returned slice).
+// Passing b through an interface (e.g. t.New().Write(b)) would force b to escape to the
+// heap because the compiler cannot prove an interface method won't retain it.
 func hashChildren256(l, r []byte) []byte {
 	var b [1 + 2*sha256.Size]byte
 	b[0] = RFC6962NodeHashPrefix
