@@ -16,7 +16,6 @@
 package rfc6962
 
 import (
-	"bytes"
 	"crypto"
 	"crypto/sha256"
 )
@@ -44,7 +43,7 @@ func New(h crypto.Hash) *Hasher {
 func (t *Hasher) EmptyRoot() []byte {
 	if t.Hash == crypto.SHA256 {
 		h := sha256.Sum256(nil)
-		return bytes.Clone(h[:])
+		return h[:]
 	}
 	return t.New().Sum(nil)
 }
@@ -78,12 +77,12 @@ func (t *Hasher) HashChildren(l, r []byte) []byte {
 	return h.Sum(nil)
 }
 
-// hashChildren256 avoids allocating a sha256.digest and preimage slice by using a fixed 65-byte stack buffer.
+// hashChildren256 hashes the fixed 65-byte RFC6962 interior node preimage on the stack.
 func hashChildren256(l, r []byte) []byte {
 	var b [1 + 2*sha256.Size]byte
 	b[0] = RFC6962NodeHashPrefix
 	copy(b[1:], l)
 	copy(b[1+sha256.Size:], r)
 	h := sha256.Sum256(b[:])
-	return bytes.Clone(h[:])
+	return h[:]
 }
