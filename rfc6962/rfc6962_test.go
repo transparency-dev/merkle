@@ -105,3 +105,12 @@ func BenchmarkHashChildren(b *testing.B) {
 		_ = h.HashChildren(l, r)
 	}
 }
+
+func BenchmarkHashLeaf(b *testing.B) {
+	h := DefaultHasher
+	data := []byte("benchmark leaf payload")
+	b.ResetTimer()
+	for range b.N {
+		_ = h.HashLeaf(data)
+	}
+}
