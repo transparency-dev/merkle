@@ -1,0 +1,4 @@
+github.com/google/go-cmp v0.5.6/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
+github.com/transparency-dev/merkle v0.0.0-20220425113829-c120179f55ad h1:82yvTO+VijfWulMsMQvqQSZ0zNEAgmEUeBG+ArrO9Js=
+github.com/transparency-dev/merkle v0.0.0-20220425113829-c120179f55ad/go.mod h1:B8FIw5LTq6DaULoHsVFRzYIUDkl8yuSwCdZnOZGKL/A=
+golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
