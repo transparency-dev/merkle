@@ -84,12 +84,22 @@ func TestAppendRangeErrors(t *testing.T) {
 }
 
 func TestEqual(t *testing.T) {
+	sameRange := &Range{
+		f:      factory,
+		begin:  17,
+		end:    23,
+		hashes: [][]byte{[]byte("hash 1"), []byte("hash 2")},
+	}
 	for _, test := range []struct {
 		desc      string
 		lhs       *Range
 		rhs       *Range
 		wantEqual bool
 	}{
+		{desc: "both nil", lhs: nil, rhs: nil, wantEqual: true},
+		{desc: "lhs nil", lhs: nil, rhs: sameRange, wantEqual: false},
+		{desc: "rhs nil", lhs: sameRange, rhs: nil, wantEqual: false},
+		{desc: "identical pointer", lhs: sameRange, rhs: sameRange, wantEqual: true},
 		{
 			desc: "incompatible trees",
 			lhs: &Range{
@@ -205,8 +215,14 @@ func TestGetMergePath(t *testing.T) {
 		{begin: 0, mid: 0, end: 0, wantEmpty: true},
 		{begin: 0, mid: 0, end: 1, wantEmpty: true},
 		{begin: 0, mid: 0, end: uint64(1) << 63, wantEmpty: true},
+		{begin: 0, mid: 0, end: ^uint64(0), wantEmpty: true},
+		{begin: 6, mid: 5, end: 6, wantEmpty: true},
+		{begin: 0, mid: 5, end: 4, wantEmpty: true},
 		{begin: 0, mid: 1, end: 1, wantEmpty: true},
 		{begin: 0, mid: 1, end: 2, wantLow: 0, wantHigh: 1},
+		{begin: 0, mid: 1, end: uint64(1) << 63, wantLow: 0, wantHigh: 63},
+		{begin: 0, mid: ^uint64(0) - 2, end: ^uint64(0) - 1, wantLow: 0, wantHigh: 1},
+		{begin: 0, mid: ^uint64(0) - 1, end: ^uint64(0), wantEmpty: true},
 		{begin: 0, mid: 16, end: 32, wantLow: 4, wantHigh: 5},
 		{begin: 0, mid: uint64(1) << 63, end: ^uint64(0), wantEmpty: true},
 		{begin: 0, mid: uint64(1) << 63, end: uint64(1)<<63 + 100500, wantEmpty: true},
