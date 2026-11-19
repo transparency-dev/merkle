@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"math"
 	"math/bits"
 )
 
@@ -37,6 +38,9 @@ type RangeFactory struct {
 // NewRange creates a Range for [begin, end) with the given set of hashes. The
 // hashes correspond to the roots of the minimal set of perfect sub-trees
 // covering the [begin, end) leaves range, ordered left to right.
+//
+// Warning: The passed-in slice of hashes may be modified in-place by subsequent
+// Append or AppendRange calls.
 func (f *RangeFactory) NewRange(begin, end uint64, hashes [][]byte) (*Range, error) {
 	if end < begin {
 		return nil, fmt.Errorf("invalid range: end=%d, want >= %d", end, begin)
@@ -81,6 +85,9 @@ func (r *Range) End() uint64 {
 
 // Hashes returns sub-tree hashes corresponding to the minimal set of perfect
 // sub-trees covering the [begin, end) range, ordered left to right.
+//
+// Warning: The returned slice aliases internal Range state and may be modified
+// by subsequent Append or AppendRange calls.
 func (r *Range) Hashes() [][]byte {
 	return r.hashes
 }
@@ -88,6 +95,9 @@ func (r *Range) Hashes() [][]byte {
 // Append extends the compact range by appending the passed in hash to it. It
 // reports all the added nodes through the visitor function (if non-nil).
 func (r *Range) Append(hash []byte, visitor VisitFn) error {
+	if r.end == math.MaxUint64 {
+		return errors.New("range is full")
+	}
 	if visitor != nil {
 		visitor(NewNodeID(0, r.end), hash)
 	}
@@ -142,6 +152,12 @@ func (r *Range) GetRootHash(visitor VisitFn) ([]byte, error) {
 
 // Equal compares two Ranges for equality.
 func (r *Range) Equal(other *Range) bool {
+	if r == other {
+		return true
+	}
+	if r == nil || other == nil {
+		return false
+	}
 	if r.f != other.f || r.begin != other.begin || r.end != other.end {
 		return false
 	}
@@ -165,9 +181,6 @@ func (r *Range) appendImpl(end uint64, seed []byte, hashes [][]byte, visitor Vis
 	// Bits [low, high) of r.end encode the merge path, i.e. the sequence of node
 	// merges that transforms the two compact ranges into one.
 	low, high := getMergePath(r.begin, r.end, end)
-	if high < low {
-		high = low
-	}
 	index := r.end >> low
 	// Now bits [0, high-low) of index encode the merge path.
 
@@ -213,7 +226,7 @@ func (r *Range) appendImpl(end uint64, seed []byte, hashes [][]byte, visitor Vis
 // bit indices [low, high). A bit value of 1 on level i of mid means that the
 // node on this level merges with the corresponding node in the left compact
 // range, whereas 0 represents merging with the right compact range. If the
-// path is empty then high <= low.
+// path is empty then high == low.
 //
 // The output is not specified if begin <= mid <= end doesn't hold, but the
 // function never panics.
@@ -225,6 +238,9 @@ func getMergePath(begin, mid, end uint64) (uint, uint) {
 	}
 	if high2 := bits.Len64((mid - 1) ^ end); high2 < high {
 		high = high2
+	}
+	if high <= low {
+		return 0, 0
 	}
 	return uint(low), uint(high - 1)
 }

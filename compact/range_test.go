@@ -19,9 +19,11 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"math"
 	"math/bits"
 	"math/rand/v2"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -573,6 +575,73 @@ func TestDecomposePow2(t *testing.T) {
 				t.Fatalf("verifyDecompose(%d,%d): %v", 0, end, err)
 			}
 		})
+	}
+}
+
+func TestMaxUint64Bounds(t *testing.T) {
+	hashes := make([][]byte, compact.RangeSize(0, math.MaxUint64))
+	for i := range hashes {
+		hashes[i] = hashLeaf(leafData(uint64(i)))
+	}
+	full, err := factory.NewRange(0, math.MaxUint64, hashes)
+	if err != nil {
+		t.Fatalf("NewRange(0, MaxUint64): %v", err)
+	}
+
+	// Merging [0, 0) with [0, MaxUint64) must not underflow or invoke visitor.
+	failVisit := func(id compact.NodeID, _ []byte) {
+		t.Errorf("visitor unexpectedly invoked for %+v", id)
+	}
+	lhs := factory.NewEmptyRange(0)
+	if err := lhs.AppendRange(full, failVisit); err != nil {
+		t.Fatalf("AppendRange([0, MaxUint64)): %v", err)
+	}
+	if !lhs.Equal(full) {
+		t.Error("merged range does not equal full range")
+	}
+
+	// GetRootHash over [0, MaxUint64) visits 63 ephemeral nodes ending at (64, 0).
+	var ephemeral []compact.NodeID
+	root, err := lhs.GetRootHash(func(id compact.NodeID, _ []byte) {
+		ephemeral = append(ephemeral, id)
+	})
+	if err != nil || len(root) == 0 {
+		t.Fatalf("GetRootHash() = (%x, %v), want non-empty root and nil error", root, err)
+	}
+	if got, want := len(ephemeral), 63; got != want {
+		t.Fatalf("GetRootHash visited %d ephemeral nodes, want %d", got, want)
+	}
+	if got, want := ephemeral[len(ephemeral)-1], compact.NewNodeID(64, 0); got != want {
+		t.Errorf("final ephemeral node = %+v, want %+v", got, want)
+	}
+
+	// Append at End() == MaxUint64 - 1 succeeds and reaches End() == MaxUint64.
+	penultimate := factory.NewEmptyRange(math.MaxUint64 - 1)
+	var visited []compact.NodeID
+	if err := penultimate.Append(hashLeaf([]byte("last")), func(id compact.NodeID, _ []byte) {
+		visited = append(visited, id)
+	}); err != nil {
+		t.Fatalf("Append at MaxUint64-1: %v", err)
+	}
+	if got := penultimate.End(); got != math.MaxUint64 {
+		t.Fatalf("End() = %d, want %d", got, uint64(math.MaxUint64))
+	}
+	if diff := cmp.Diff(visited, []compact.NodeID{compact.NewNodeID(0, math.MaxUint64-1)}); diff != "" {
+		t.Errorf("visited nodes diff (-got +want):\n%s", diff)
+	}
+
+	// Append at End() == MaxUint64 must fail before invoking visitor or mutating state.
+	for _, rng := range []*compact.Range{factory.NewEmptyRange(math.MaxUint64), penultimate, full} {
+		wantHashes := slices.Clone(rng.Hashes())
+		if err := rng.Append(hashLeaf([]byte("leaf")), failVisit); err == nil {
+			t.Fatal("Append at MaxUint64 succeeded unexpectedly")
+		}
+		if got := rng.End(); got != math.MaxUint64 {
+			t.Errorf("End() = %d, want %d", got, uint64(math.MaxUint64))
+		}
+		if diff := cmp.Diff(rng.Hashes(), wantHashes); diff != "" {
+			t.Errorf("Hashes() mutated after failed Append:\n%s", diff)
+		}
 	}
 }
 
