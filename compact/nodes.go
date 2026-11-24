@@ -58,8 +58,12 @@ func (id NodeID) Coverage() (uint64, uint64) {
 
 // RangeNodes appends the IDs of the nodes that comprise the [begin, end)
 // compact range to the given slice, and returns the new slice. The caller may
-// pre-allocate space with the help of the RangeSize function.
+// pre-allocate space with the help of the RangeSize function. Returns ids
+// unchanged if begin >= end.
 func RangeNodes(begin, end uint64, ids []NodeID) []NodeID {
+	if begin >= end {
+		return ids
+	}
 	left, right := Decompose(begin, end)
 
 	pos := begin
@@ -82,8 +86,12 @@ func RangeNodes(begin, end uint64, ids []NodeID) []NodeID {
 	return ids
 }
 
-// RangeSize returns the number of nodes in the [begin, end) compact range.
+// RangeSize returns the number of nodes in the [begin, end) compact range, or 0
+// if begin >= end.
 func RangeSize(begin, end uint64) int {
+	if begin >= end {
+		return 0
+	}
 	left, right := Decompose(begin, end)
 	return bits.OnesCount64(left) + bits.OnesCount64(right)
 }

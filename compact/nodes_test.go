@@ -34,6 +34,11 @@ func TestRangeNodesAndSize(t *testing.T) {
 		{end: 0, want: nil},
 		{begin: 10, end: 10, want: nil},
 		{begin: 1024, end: 1024, want: nil},
+		// Inverted ranges (begin > end).
+		{begin: 1, end: 0, want: nil},
+		{begin: 10, end: 5, want: nil},
+		{begin: ^uint64(0), end: 0, want: nil},
+		{begin: ^uint64(0), end: ^uint64(0) - 1, want: nil},
 		// One entry.
 		{begin: 10, end: 11, want: []NodeID{n(0, 10)}},
 		{begin: 1024, end: 1025, want: []NodeID{n(0, 1024)}},
@@ -88,6 +93,18 @@ func TestRangeNodesAppend(t *testing.T) {
 	got := nodes[:len(prefix)]
 	if diff := cmp.Diff(got, prefix); diff != "" {
 		t.Fatalf("RangeNodes: diff(-prefix +got):\n%s", diff)
+	}
+
+	for _, tc := range []struct {
+		begin, end uint64
+	}{
+		{begin: 123, end: 123},
+		{begin: 456, end: 123},
+	} {
+		unchanged := RangeNodes(tc.begin, tc.end, prefix)
+		if diff := cmp.Diff(prefix, unchanged); diff != "" {
+			t.Fatalf("RangeNodes(%d, %d, prefix): diff(-prefix +got):\n%s", tc.begin, tc.end, diff)
+		}
 	}
 }
 
