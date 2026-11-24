@@ -34,24 +34,53 @@ type RangeFactory struct {
 	Hash HashFn
 }
 
+// MakeRange creates a Range for [begin, end) with the given set of hashes. The
+// hashes correspond to the roots of the minimal set of perfect sub-trees
+// covering the [begin, end) leaves range, ordered left to right.
+//
+// See the Hazard in the Range comment to avoid pitfalls.
+func (f *RangeFactory) MakeRange(begin, end uint64, hashes [][]byte) (Range, error) {
+	if end < begin {
+		return Range{}, fmt.Errorf("invalid range: end=%d, want >= %d", end, begin)
+	}
+	if got, want := len(hashes), RangeSize(begin, end); got != want {
+		return Range{}, fmt.Errorf("invalid hashes: got %d values, want %d", got, want)
+	}
+	return Range{f: f, begin: begin, end: end, hashes: hashes}, nil
+}
+
 // NewRange creates a Range for [begin, end) with the given set of hashes. The
 // hashes correspond to the roots of the minimal set of perfect sub-trees
 // covering the [begin, end) leaves range, ordered left to right.
+//
+// It is recommended to use MakeRange instead, which does not allocate.
+// If in doubt, NewRange is safer.
 func (f *RangeFactory) NewRange(begin, end uint64, hashes [][]byte) (*Range, error) {
-	if end < begin {
-		return nil, fmt.Errorf("invalid range: end=%d, want >= %d", end, begin)
+	r, err := f.MakeRange(begin, end, hashes)
+	if err != nil {
+		return nil, err
 	}
-	if got, want := len(hashes), RangeSize(begin, end); got != want {
-		return nil, fmt.Errorf("invalid hashes: got %d values, want %d", got, want)
-	}
-	return &Range{f: f, begin: begin, end: end, hashes: hashes}, nil
+	return &r, nil
+}
+
+// MakeEmptyRange returns a new Range for an empty [begin, begin) range. The
+// value of begin defines where the range will start growing from when entries
+// are appended to it.
+//
+// See the Hazard in the Range comment to avoid pitfalls.
+func (f *RangeFactory) MakeEmptyRange(begin uint64) Range {
+	return Range{f: f, begin: begin, end: begin}
 }
 
 // NewEmptyRange returns a new Range for an empty [begin, begin) range. The
 // value of begin defines where the range will start growing from when entries
 // are appended to it.
+//
+// It is recommended to use MakeEmptyRange instead, which does not allocate.
+// If in doubt, NewEmptyRange is safer.
 func (f *RangeFactory) NewEmptyRange(begin uint64) *Range {
-	return &Range{f: f, begin: begin, end: begin}
+	r := f.MakeEmptyRange(begin)
+	return &r
 }
 
 // Range represents a compact Merkle tree range for leaf indices [begin, end).
@@ -60,8 +89,21 @@ func (f *RangeFactory) NewEmptyRange(begin uint64) *Range {
 // range. The structure is efficiently mergeable with other compact ranges that
 // share one of the endpoints with it.
 //
-// For more details, see
+// For more details on compact ranges and how they can be used, see
 // https://github.com/transparency-dev/merkle/blob/main/docs/compact_ranges.md.
+//
+// Hazard: the Range is mutable, and its internal slice can be updated in-place
+// by Append* methods.
+//
+//	cr := factory.MakeRange(0, 10, hashes)
+//	populate(cr, leaves) // internally calls cr.Append()
+//	use(cr) // hazard: cr could be corrupted by populate()
+//
+// To be safe, the Range should be used by pointer. When using by value, be
+// sure that it is either semantically immutable, or the value is updated after
+// mutations (e.g., in the example above, the updated Range is returned from
+// the populate() function and assigned to cr). The latter is a common pattern
+// in Go, think slices: slice = append(slice, value).
 type Range struct {
 	f      *RangeFactory
 	begin  uint64
