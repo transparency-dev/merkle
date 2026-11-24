@@ -102,7 +102,7 @@ func TestRangeNodesAppend(t *testing.T) {
 		{begin: 456, end: 123},
 	} {
 		unchanged := RangeNodes(tc.begin, tc.end, prefix)
-		if diff := cmp.Diff(unchanged, prefix); diff != "" {
+		if diff := cmp.Diff(prefix, unchanged); diff != "" {
 			t.Fatalf("RangeNodes(%d, %d, prefix): diff(-prefix +got):\n%s", tc.begin, tc.end, diff)
 		}
 	}

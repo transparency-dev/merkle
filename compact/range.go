@@ -228,8 +228,8 @@ func (r *Range) appendImpl(end uint64, seed []byte, hashes [][]byte, visitor Vis
 // range, whereas 0 represents merging with the right compact range. If the
 // path is empty then high == low.
 //
-// The output is not specified if begin <= mid <= end doesn't hold, but the
-// function never panics.
+// If begin <= mid <= end doesn't hold, the merge path is unspecified, but the
+// function never panics and still guarantees low <= high.
 func getMergePath(begin, mid, end uint64) (uint, uint) {
 	low := bits.TrailingZeros64(mid)
 	high := 64
@@ -239,10 +239,7 @@ func getMergePath(begin, mid, end uint64) (uint, uint) {
 	if high2 := bits.Len64((mid - 1) ^ end); high2 < high {
 		high = high2
 	}
-	if high <= low {
-		return 0, 0
-	}
-	return uint(low), uint(high - 1)
+	return uint(low), uint(max(low, high-1))
 }
 
 // Decompose splits the [begin, end) range into a minimal number of sub-ranges,

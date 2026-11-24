@@ -238,8 +238,8 @@ func TestGetMergePath(t *testing.T) {
 		t.Run(fmt.Sprintf("%d:%d:%d", tc.begin, tc.mid, tc.end), func(t *testing.T) {
 			low, high := getMergePath(tc.begin, tc.mid, tc.end)
 			if tc.wantEmpty {
-				if low < high {
-					t.Fatalf("getMergePath(%d,%d,%d)=%d,%d; want empty", tc.begin, tc.mid, tc.end, low, high)
+				if low != high {
+					t.Fatalf("getMergePath(%d,%d,%d)=%d,%d; want empty (low == high)", tc.begin, tc.mid, tc.end, low, high)
 				}
 			} else if low != tc.wantLow || high != tc.wantHigh {
 				t.Fatalf("getMergePath(%d,%d,%d)=%d,%d; want %d,%d", tc.begin, tc.mid, tc.end, low, high, tc.wantLow, tc.wantHigh)
